@@ -2,13 +2,13 @@
 
 ## Context
 
-This repo's product direction, architecture, and datasets are already locked in (`docs/prd.md`, `docs/adr/0003-0005`, `docs/knowledge-base/`), and the app is scaffolded (Next.js 16 App Router, TDD/coverage gate, Husky, CI) but only has a placeholder homepage — no map, API route, report UI, or adapters exist yet. GitHub issue #21 sets the team's build order and ownership: **antunishdPursuit** builds the frontend first and, in doing so, determines the real API contract (which may supersede the PRD §9 placeholder); **1abbasia** builds the backend off that finalized contract; **rhaeyyan** integrates the two tracks; **hirekarl** (repo admin) owns infra, code review, and deployment throughout. Issue #20 (optional AI explanation) was closed not-planned — the team deferred it, so no AI work appears anywhere in this plan; the deterministic report is complete and demoable without it (ADR-0005).
+This repo's product direction, architecture, and datasets are locked in (`docs/prd.md`, `docs/adr/0003-0005`, `docs/knowledge-base/`). Phase 1's map, report UI, print view, tests, and canonical contract are implemented; the report API and server adapters remain for Phase 2. GitHub issue #21 sets the team's build order and ownership: **antunishdPursuit** builds the frontend first and freezes the real API contract; **1abbasia** builds the backend from that finalized contract; **rhaeyyan** integrates the two tracks; **hirekarl** (repo admin) owns infra, code review, and deployment throughout. Issue #20 (optional AI explanation) was closed not-planned — the team deferred it, so no AI work appears anywhere in this plan; the deterministic report is complete and demoable without it (ADR-0005).
 
-This plan turns that ownership sequence into an executable build: a small Phase 0 to fix stale placeholder content before anyone builds on it, then Phase 1 (Frontend) → Phase 2 (Backend) → Phase 3 (Integration), each broken into TDD-ready `[SPEC]`/`[SPIKE]` + `[FORCES]` blocks per `CLAUDE.md`'s `tech-lead → sdet → builder` handoff schema, with hirekarl's infra/deploy checkpoints threaded in at the points where they actually gate the next step (e.g. the Socrata app token must exist before Phase 2's collision queries go live). Every `[SPEC]` below is ready to relay directly to `sdet`/`builder` — the goal is that any teammate can pick up a step and start immediately without re-deriving scope.
+This plan records the completed Phase 0 and Phase 1 work, then sequences Phase 2 (Backend) → Phase 3 (Integration). Each step uses the TDD-ready `[SPEC]`/`[SPIKE]` + `[FORCES]` blocks from `CLAUDE.md`'s `tech-lead → sdet → builder` handoff schema. Infra and deployment checkpoints are tracked alongside implementation without blocking local frontend or backend work; only the relevant environment value must exist before its deployed integration is exercised. Every remaining `[SPEC]` is ready to relay directly to `sdet`/`builder`.
 
 **Non-negotiables carried into every step** (see `CLAUDE.md`, `docs/adr/0005-deterministic-report-and-bounded-ai.md`): every crash count, injury/fatality tally, contributing-factor rollup, Priority Zone overlap, and completeness status is computed deterministically server-side — no AI anywhere in this plan. A missing value is `null`, never `0`. The server owns the 50m radius and the 2025 period; the browser never supplies trusted geometry or dates. One shared report object renders on screen and in print/download — never recomputed independently. ≥90% coverage, TDD (red before green), Conventional Commits, no AI `Co-Authored-By` trailer, feature branch + PR + rebase merge.
 
-**File layout used throughout** (new — nothing beyond the placeholder exists yet):
+**File layout used throughout:**
 
 ```text
 src/types/report.ts                        shared report/contract types
@@ -90,9 +90,9 @@ Small pre-work so nothing downstream builds on the old petition-era pitch or hit
 
 ## Phase 1 — Frontend (owner: antunishdPursuit)
 
-Gated on Phase 0. Builds against a mocked report response matching PRD §9's candidate contract so frontend work isn't blocked on the backend. **The last step in this phase is the deliverable Phase 2 is gated on.**
+Built against source-backed mock report responses so frontend work was not blocked on the backend. **The final contract from this completed phase is the deliverable Phase 2 is gated on.**
 
-- [ ] **1.1 — Shared contract types + mock report fixture**
+- [x] **1.1 — Shared contract types + mock report fixture**
 
   ```text
   [SPEC]
@@ -108,7 +108,7 @@ Gated on Phase 0. Builds against a mocked report response matching PRD §9's can
   1. Contract fidelity to PRD §9/§12 fixture numbers > convenience/shorthand types.
   ```
 
-- [ ] **1.2 — Map viewport load of eligible centerlines**
+- [x] **1.2 — Map viewport load of eligible centerlines**
 
   ```text
   [SPEC]
@@ -140,7 +140,7 @@ Gated on Phase 0. Builds against a mocked report response matching PRD §9's can
   1. Shipping the ordinary-intersection demo fixture reliably > generalizing to every topology edge case.
   ```
 
-- [ ] **1.4 — Hoverable/selectable intersections with 34px hit target and 50m circle**
+- [x] **1.4 — Hoverable/selectable intersections with 34px hit target and 50m circle**
 
   ```text
   [SPEC]
@@ -156,7 +156,7 @@ Gated on Phase 0. Builds against a mocked report response matching PRD §9's can
   1. ADR-0004's verified 34px hit target and hit/visible layer separation > a simpler single-layer implementation.
   ```
 
-- [ ] **1.5 — Side panel state machine**
+- [x] **1.5 — Side panel state machine**
 
   ```text
   [SPEC]
@@ -172,11 +172,11 @@ Gated on Phase 0. Builds against a mocked report response matching PRD §9's can
   1. Exact PRD §6.4 state coverage > a simplified 3-state (loading/success/error) shortcut.
   ```
 
-- [ ] **1.6 — Report hierarchy rendering (mocked)**
+- [x] **1.6 — Report hierarchy rendering (mocked)**
 
   ```text
   [SPEC]
-  - Objective: In ReportPanel's complete/partial states, render the full PRD §6.6 hierarchy — status banner, headline facts, road-user breakdown, contributing-factor rollup (with "Unspecified" as its own category), Priority Zone status (matched/not_matched/unavailable, never a zone name per docs/knowledge-base/dataset-priority-zones.md), limitations, and sources (dataset name/ID/role/retrieval time/status) — using Step 1.1's mocks as the exact rendered numbers.
+  - Objective: In ReportPanel's complete/partial states, render the full PRD §6.5 hierarchy — status banner, headline facts, road-user breakdown, contributing-factor rollup (with "Unspecified" as its own category), Priority Zone status (matched/not_matched/unavailable, never a zone name per docs/knowledge-base/dataset-priority-zones.md), limitations, and sources (dataset name/ID/role/retrieval time/status) — using Step 1.1's mocks as the exact rendered numbers.
   - Inputs/Outputs: Input: both mock fixtures from 1.1. Output: rendered DOM matching PRD §12's exact numbers per fixture.
   - Bounded-AI boundary: N/A — no AI in this step.
   - Verification Oracle: Component tests asserting rendered text contains the exact fixture numbers for both fixtures (including the missing-on_street_name note for fixture 2), and that Priority Zone renders exactly one of matched/not_matched/unavailable with no zone-name text.
@@ -188,7 +188,7 @@ Gated on Phase 0. Builds against a mocked report response matching PRD §9's can
   1. Single shared report object rendered as-is > per-component reformatting/recomputation.
   ```
 
-- [ ] **1.7 — Accessibility pass**
+- [x] **1.7 — Accessibility pass**
 
   ```text
   [SPEC]
@@ -204,7 +204,7 @@ Gated on Phase 0. Builds against a mocked report response matching PRD §9's can
   1. Keyboard/screen-reader parity with the pointer flow > pointer-only interaction shortcuts.
   ```
 
-- [ ] **1.8 — Print/download of the shared report object**
+- [x] **1.8 — Print/download of the shared report object**
 
   ```text
   [SPEC]
@@ -220,7 +220,7 @@ Gated on Phase 0. Builds against a mocked report response matching PRD §9's can
   1. Identical shared-object rendering across screen and print > a leaner print-specific summary view.
   ```
 
-- [ ] **1.9 — Finalize and document the frontend's actual contract (Phase 1 deliverable — gates Phase 2)**
+- [x] **1.9 — Finalize and document the frontend's actual contract (Phase 1 deliverable — gates Phase 2)**
 
   ```text
   [SPEC]
@@ -236,7 +236,7 @@ Gated on Phase 0. Builds against a mocked report response matching PRD §9's can
   1. Frontend-as-source-of-truth per issue #21 > strict adherence to PRD §9's placeholder contract.
   ```
 
-**Infra checkpoint (hirekarl):** open a draft PR at Phase 1 branch creation for visibility; verify the Vercel preview builds after Steps 1.2/1.4 (map renders) and again after Step 1.9 (contract finalized) before Phase 2 starts.
+**Infra checkpoint (hirekarl, non-blocking):** Vercel preview checks and deployment setup can follow the completed local frontend and contract work; they do not block Phase 2 implementation against `docs/contract.md`.
 
 ---
 
