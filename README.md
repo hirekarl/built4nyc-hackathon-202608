@@ -47,6 +47,17 @@ Event source material and project docs live in [`docs/`](./docs) — see [`docs/
 
 Full engineering standards (TDD, ≥90% coverage gate, CI) are wired up — see [`CLAUDE.md`](./CLAUDE.md) for details.
 
+### End-to-end tests
+
+E2E tests run via [Playwright](https://playwright.dev), with [`@axe-core/playwright`](https://github.com/dequelabs/axe-core-npm/tree/develop/packages/playwright) scanning every page for accessibility violations. Specs live in [`e2e/`](./e2e). Run them locally with:
+
+```sh
+npx playwright install # one-time browser install
+npm run test:e2e
+```
+
+They run as a blocking job in CI (`.github/workflows/ci.yml`) but are not part of the pre-commit hook, since they need a full build + running server.
+
 ## Submission
 
 Deadline: **2:00 PM ET, Sunday, August 16, 2026**, via Devpost at [on.nypl.org/hack-dev](https://on.nypl.org/hack-dev).
