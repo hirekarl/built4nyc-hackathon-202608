@@ -1,6 +1,6 @@
 ---
 type: dataset
-status: candidate — staleness caveat, see below
+status: deferred — optional research with a staleness caveat
 source: verified against live Socrata API (metadata + full-table aggregates), 2026-08-15
 ---
 
@@ -38,15 +38,15 @@ Verified via `min/max(apprstartd)` and `min/max(apprenddat)` across the full tab
 
 **Every one of the 391 rows has a program window that has already ended** relative to the app's "today" (2026-08-15) — the newest `apprenddat` in the entire dataset is over a year in the past. This dataset reflects a past program cycle (looks like the 2024–2025 Open Streets year), not a live/current registry as of the app's build/demo date.
 
-**Impact on the stretch goal** ("flag if the drawn area overlaps an _existing_ Open Street, to avoid a redundant petition," PRD §6): an overlap against this data does not mean the street is _currently_ an Open Street — the program may not have renewed, may have moved, or may simply not be in this snapshot yet. Recommendations:
+**Impact on any optional future context layer:** an overlap against this data does not mean the selected street or intersection is _currently_ an Open Street — the program may not have renewed, may have moved, or may simply not be in this snapshot yet. This dataset is not part of the current MVP. Recommendations if it is reconsidered:
 
 - Re-check dataset freshness close to demo day — the portal may publish a newer program-year snapshot before Aug 16, 2026, but as researched now (2026-08-15) it has not.
 - If shipped as-is, caveat the UI copy explicitly ("was an Open Street as of the 2024–2025 program year") rather than implying current status.
-- This is an additional reason (beyond the existing "cut first if time-constrained" note) to deprioritize this dataset — [[dataset-priority-zones]] remains the higher-value, non-stale context dataset to keep if only one makes the cut.
+- This is an additional reason to keep this dataset deferred. [Priority Zones](./dataset-priority-zones.md) remains the adopted, non-stale context dataset for the MVP.
 
 ## Access pattern
 
 - Small (391 rows) — fetch once, cache/bundle at build time.
-- Spatial join with the user-drawn polygon: `the_geom` is a multiline, not a point, so `within_polygon` doesn't apply directly. See [[joins]] for the recommended client-side (Turf.js) approach, same as Priority Zones.
+- If reconsidered, compare its multiline geometry with the server-owned analysis boundary rather than a user-drawn polygon. See [dataset joins and spatial relationships](./joins.md) before selecting an implementation approach.
 
-Status note: stretch goal per [PRD §6](../prd.md#6-data-sources) — first thing to cut if the weekend timeline is tight, now doubly so given the staleness finding above.
+Status note: deferred and intentionally absent from the adopted sources in [PRD §8](../prd.md#8-data-sources), reinforced by the staleness finding above.

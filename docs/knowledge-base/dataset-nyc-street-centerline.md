@@ -36,6 +36,7 @@ The initial eligibility filter should require `rw_type = '1'` and a blank `nonpe
 The filter therefore excludes:
 
 - highways;
+- bridges;
 - tunnels;
 - ramps;
 - alleys;
