@@ -14,7 +14,7 @@ The MVP selects one official physical surface-street intersection and analyzes a
 
 - Load eligible official centerlines by map viewport.
 - Use official street names, coordinates, and physical IDs.
-- Exclude highways, tunnels, ramps, alleys, paths, non-pedestrian records, and nonphysical records.
+- Exclude highways, bridges, tunnels, ramps, alleys, paths, non-pedestrian records, and nonphysical records.
 - Show the circle before analysis and state `50 meters (about 164 feet)` in the interface and report.
 - Use calendar year 2025 for the first slice.
 - Keep the radius defined in one server-owned configuration location.

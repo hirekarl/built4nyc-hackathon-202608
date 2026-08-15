@@ -1,16 +1,16 @@
 ---
 type: regulation
-status: candidate — not yet wired into the petition-generation prompt
+status: deferred — retained for optional future petition or permit work
 source: NYC DOT Open Streets program rules (Title 34 §4-21) and the 2026 ArcGIS Survey123 application, research pass 2026-08-15
 ---
 
 # NYC DOT Open Streets 2026 application requirements
 
-What the petition draft actually needs to get right to read as a credible Open Streets application, not a generic complaint letter. Distilled from a much longer research pass — the omitted material (SAPO permitting, CGL insurance minimums, PSEP grant partners, subconcession/exclusive-seating economics, capital redesigns like 34th Avenue's "Paseo Park") is real but has no bearing on a stateless petition-drafting MVP; cut rather than carried forward as unused context.
+Reference material for a possible future Open Streets application feature. This research is not part of the current intersection-safety report MVP and is not input to its optional AI explanation. The omitted material (SAPO permitting, CGL insurance minimums, PSEP grant partners, subconcession/exclusive-seating economics, and capital redesigns such as 34th Avenue's "Paseo Park") remains outside the current product boundary.
 
-The product-level AI guardrails (data-grounded prompting, human-in-the-loop editing, no auto-submission) are already specified in [PRD §7](../prd.md#7-ai-usage) — not repeated here, this file is the regulatory content those guardrails operate on.
+The current product boundary is defined in [PRD §3](../prd.md#3-current-implementation-slice), and the only approved AI surface is defined in [PRD §10](../prd.md#10-optional-ai-explanation). This file is retained research, not a prompt template for either feature.
 
-## Typologies — the petition must target exactly one
+## Typologies — an optional future application must target exactly one
 
 | Typology | Vehicular access | Bus/truck route siting | Hours |
 | --- | --- | --- | --- |
@@ -18,7 +18,7 @@ The product-level AI guardrails (data-grounded prompting, human-in-the-loop edit
 | **Full Closure** | None (except emergency response) | Weekends only (Sat–Sun, 9 AM–12 AM) | 9:00 AM–12:00 AM |
 | **Full Closure: Schools** | None during operational hours | Strictly prohibited, any time | School days only, 7:00 AM–6:00 PM |
 
-The LLM should pick the typology implied by the drawn area's context (or ask, if genuinely ambiguous) and write the letter against that specific typology's rules — not generic "close this street" language.
+Any future application workflow must require an explicit, verified typology rather than infer one from the current intersection selection or safety report.
 
 ## Site plan mandates — cite these to demonstrate operational competence
 
@@ -39,8 +39,8 @@ The LLM should pick the typology implied by the drawn area's context (or ask, if
 - **Ineligible as sole partner:** isolated for-profit entities, single-day event organizers (route to SAPO instead — out of scope for this app).
 - **New Open Streets** (no prior operating history) need 3 formal Letters of Support from a diverse set of stakeholders — elected officials, the Community Board, adjacent property owners, neighboring institutions. The letter should note this as a next step for the user, not something the app itself generates.
 
-## Why it matters for this project
+## Why this research is retained
 
-This is what separates a petition that reads as researched from one that reads as a form letter: naming the correct typology, citing the exact numeric mandates (15 ft, 8 ft, 400 sq ft) as evidence the applicant understands the compliance bar, and preempting the three objections DOT reviewers actually raise (emergency access, ADA, sanitation) rather than leaving them for the reviewer to find. All of it is static, deterministic reference content — safe to hand the LLM as prompt context, since none of it is user-specific data that needs computing.
+If petition or permit support is reconsidered later, this material records the correct typologies, numeric mandates, eligibility rules, and common operational objections. None of it is used to compute, render, or explain the current street-safety report.
 
-Used by: [PRD §7](../prd.md#7-ai-usage) (once the petition-generation prompt template is implemented).
+Status: deferred optional-feature research. See [PRD §3](../prd.md#3-current-implementation-slice) and [PRD §10](../prd.md#10-optional-ai-explanation) for the active product and AI boundaries.
