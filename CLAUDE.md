@@ -83,8 +83,9 @@ Canonical location — the agent files in `.claude/agents/` reference these by n
 [FORCES]
 
 1. <Primary force> > <Secondary force>
-2. Simplicity > Pattern purity (always present unless explicitly overridden)
 ```
+
+No default force is imposed — `tech-lead` states the actual trade-off for the task at hand rather than falling back to a fixed hierarchy.
 
 **`[COMPLIANCE-REPORT]`** — `sdet` → `tech-lead` / `builder`
 
