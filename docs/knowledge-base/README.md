@@ -6,9 +6,10 @@ Format: one fact/finding per file, most-recent status first. `status: candidate`
 
 ## Datasets
 
-- [Motor Vehicle Collisions - Crashes](./dataset-crashes.md) — `h9gi-nx95`, core geospatial crash data. **adopted**
-- [VZV Priority Zones or Areas](./dataset-priority-zones.md) — `qzji-nvbd`, DOT's own priority-corridor ranking. **adopted**
-- [Open Streets Locations](./dataset-open-streets-locations.md) — `uiay-nctu`, existing Open Streets sites, dedup/context. **candidate**
+- [Motor Vehicle Collisions - Crashes](./dataset-crashes.md) — `h9gi-nx95`, core geospatial crash data, 2.27M rows verified. **adopted**
+- [VZV Priority Zones or Areas](./dataset-priority-zones.md) — `qzji-nvbd`, DOT's priority-corridor polygons; verified 5 rows, **no borough/name/ID attribute** — see file for petition-copy implications. **adopted, schema caveat**
+- [Open Streets Locations](./dataset-open-streets-locations.md) — `uiay-nctu`, 391 rows; verified **every row's program window has already lapsed** (newest end date 2025-07-31) — see file for staleness impact on the redundancy check. **candidate**
+- [Dataset joins](./joins.md) — verified join keys: `collision_id` across crashes/vehicles/person (with a person→vehicle FK gotcha), plus the client-side spatial-join approach for the two polygon/line datasets. **reference**
 
 ## Frameworks & tools
 
