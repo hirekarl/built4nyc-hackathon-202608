@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: A feature or task for the Vision Zero Sandbox build
+about: A feature or task for the EZStreet build
 title: "feat: "
 labels: enhancement
 ---

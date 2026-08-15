@@ -1,4 +1,4 @@
-# Vision Zero Sandbox
+# EZStreet
 
 Entry for the **Built for NYC: AI Hackathon**, presented by The New York Public Library (NYPL) and Major League Hacking (MLH), Aug 15–16, 2026, at the Stavros Niarchos Foundation Library (SNFL).
 

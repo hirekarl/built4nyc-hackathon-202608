@@ -44,7 +44,7 @@ Using generative AI and "vibe coding," build a **web app** that meets a challeng
 
 ## Multi-agent build workflow
 
-This is a **team project** — anyone on the team can dispatch these agents, so the handoff protocol below is the shared contract, not one person's convention. The idea (Vision Zero Sandbox — `docs/prd.md`) and Open Data datasets (`docs/knowledge-base/`) are locked in. Once `scaffold-nextjs-app` has run, feature work for the app itself flows through a lean 3-agent roster (`.claude/agents/`), role-named (not aliased) so any teammate can tell what an agent does without cross-referencing a roster:
+This is a **team project** — anyone on the team can dispatch these agents, so the handoff protocol below is the shared contract, not one person's convention. The idea (EZStreet — `docs/prd.md`) and Open Data datasets (`docs/knowledge-base/`) are locked in. Once `scaffold-nextjs-app` has run, feature work for the app itself flows through a lean 3-agent roster (`.claude/agents/`), role-named (not aliased) so any teammate can tell what an agent does without cross-referencing a roster:
 
 | Agent | Role | May edit files? | When |
 | --- | --- | --- | --- |
