@@ -266,6 +266,12 @@ $RECYCLE.BIN/
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,linux,windows,nextjs,node,visualstudiocode
 
+### Playwright ###
+/test-results
+/playwright-report
+/blob-report
+/playwright/.cache
+
 ### App ###
 docs/private/*
 .env*
