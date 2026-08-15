@@ -47,7 +47,7 @@ Using generative AI and "vibe coding," build a **web app** that meets a challeng
 This is a **team project** — anyone on the team can dispatch these agents, so the handoff protocol below is the shared contract, not one person's convention. The idea (Vision Zero Sandbox — `docs/prd.md`) and Open Data datasets (`docs/knowledge-base/`) are locked in. Once `scaffold-nextjs-app` has run, feature work for the app itself flows through a lean 3-agent roster (`.claude/agents/`), role-named (not aliased) so any teammate can tell what an agent does without cross-referencing a roster:
 
 | Agent | Role | May edit files? | When |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `tech-lead` | Plans | No (read-only) | Non-trivial feature asks — turns them into a `[SPEC]` (≤5 files, names a Verification Oracle, states the Bounded-AI boundary). Skip for trivial one-file changes. |
 | `sdet` | Tests | Tests only | Writes the failing test first (TDD red) per the SPEC's oracle, then audits `builder`'s work — PASS/FAIL incl. the 90% coverage gate. |
 | `builder` | Implements | Yes | Single full-stack implementer (API route + UI + AI SDK call) — makes `sdet`'s red go green. |
@@ -67,6 +67,7 @@ Canonical location — the agent files in `.claude/agents/` reference these by n
 
 ```markdown
 [SPEC] / [SPIKE]
+
 - **Objective**: <what the code must achieve>
 - **Inputs/Outputs**: <types, shapes, API contract>
 - **Bounded-AI boundary**: <deterministic vs. LLM-generated — required if the task touches the petition-draft path>
@@ -80,14 +81,16 @@ Canonical location — the agent files in `.claude/agents/` reference these by n
 
 ```markdown
 [FORCES]
+
 1. <Primary force> > <Secondary force>
-2. Simplicity > Pattern purity   (always present unless explicitly overridden)
+2. Simplicity > Pattern purity (always present unless explicitly overridden)
 ```
 
 **`[COMPLIANCE-REPORT]`** — `sdet` → `tech-lead` / `builder`
 
 ```markdown
 [COMPLIANCE-REPORT]
+
 - **Status**: PASS | FAIL
 - **Oracle run**: <the SPEC's declared oracle, the exact command, and its verdict>
 - **Coverage**: <current %, PASS/FAIL against the 90% gate>
@@ -100,6 +103,7 @@ Canonical location — the agent files in `.claude/agents/` reference these by n
 
 ```markdown
 [COMPLETION-REPORT]
+
 - **Files changed**: <list>
 - **Spec items satisfied**: <checklist against the SPEC>
 - **Oracle status**: <the declared oracle, the command run, and its verdict>
