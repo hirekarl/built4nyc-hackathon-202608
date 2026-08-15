@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "EZStreet",
   description:
-    "Draw a street segment, see the crash data behind it, and draft a DOT petition backed by NYC Open Data.",
+    "Select an intersection and get a deterministic street-safety report sourced from NYC Open Data.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

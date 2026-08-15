@@ -5,9 +5,9 @@ export default function Home() {
         EZStreet
       </h1>
       <p className="max-w-xl text-lg text-zinc-600 dark:text-zinc-400">
-        Draw a street segment, see the crash data behind it, and draft a
-        petition backed by NYC Open Data to support a DOT Open Streets or Street
-        Pedestrian Plaza application.
+        Select an intersection and get a deterministic street-safety report —
+        crash counts, injuries, and Priority Zone status sourced from NYC Open
+        Data.
       </p>
     </main>
   );
