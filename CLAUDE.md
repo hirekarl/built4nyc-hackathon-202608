@@ -9,7 +9,7 @@ Using generative AI and "vibe coding," build a **web app** that meets a challeng
 ## Hard constraints
 
 - **Submission deadline: 2:00 PM ET, Sunday, August 16, 2026** — submit via Devpost at [on.nypl.org/hack-dev](https://on.nypl.org/hack-dev). No extensions.
-- Judging criteria: adherence to the prompt, originality of concept, potential impact.
+- Judging criteria: adherence to the prompt, originality of concept, potential impact — see `docs/judging-criteria.md` for the actual four-point rubric judges use (AI Usage & Technology, Design, Completion & Theme, Learning) and what it implies for the demo/presentation. Design is scored standalone from functionality — budget real time for UI polish, not just correctness.
 - Only one person per team can submit; that person is responsible for splitting any prize money.
 - Full rules: `docs/official-rules.md`. Event logistics/WiFi/FAQ: `docs/important-info-and-faqs.md`. Agenda: `docs/overview-and-agenda.md`.
 
@@ -21,9 +21,18 @@ Using generative AI and "vibe coding," build a **web app** that meets a challeng
 ## Stack & workflow
 
 - **Next.js (App Router)**, deployed on **Vercel**. Use the `vercel:*` skills already available in this environment (`vercel:bootstrap`, `vercel:deploy`, `vercel:nextjs`, `vercel:vercel-storage`, etc.) for anything Vercel/Next.js-specific — don't re-derive that guidance here.
-- No project idea is locked in yet. Use the `idea-brainstormer` agent to converge on one scoped to a weekend build, ideally with a plausible NYC Open Data angle.
-- Once scaffolding is needed, use the `scaffold-nextjs-app` skill, which also wires up the engineering standards below (hooks, lint/format config, test setup).
+- **Project idea is locked in and scaffolded**: Vision Zero Sandbox. `docs/prd.md` is the product spec, `docs/knowledge-base/` holds dataset/framework/regulation research, `docs/adr/` holds architecture decisions made along the way (e.g. ADR-0002, petition download format is PDF).
+- **Not yet linked to a Vercel project locally** (no `.vercel/` in this checkout) — run `vercel:bootstrap` when ready to deploy; check with the team first in case a project already exists on Vercel.
+- **Two architecture decisions are still open and block real feature work**: the map-draw library (`docs/knowledge-base/framework-map-draw.md` — Mapbox GL Draw vs. Leaflet.draw) and the AI SDK provider for petition generation (`docs/knowledge-base/framework-ai-sdk.md`). Both need an ADR (per the Multi-agent build workflow below) before `builder` starts on the features that depend on them.
 - Before submitting, run the `devpost-submission-checklist` skill.
+
+## Commands
+
+- `npm run dev` — local dev server. `npm run build` / `npm run start` — production build/serve.
+- `npm run lint` / `npm run format` / `npm run format:check` — app code (ESLint/Prettier).
+- `npm run lint:md` / `npm run format:md` / `npm run format:md:check` — docs (markdownlint-cli2/Prettier).
+- `npm run test` — vitest with coverage; this is what enforces the 90% gate.
+- `npm run test:e2e` / `npm run test:e2e:ui` — Playwright, including an `@axe-core/playwright` accessibility scan (see `e2e/home.spec.ts`). Use this as the Verification Oracle for anything interaction/DOM-layer that vitest + jsdom can't faithfully express.
 
 ## Git workflow
 
@@ -34,6 +43,8 @@ Using generative AI and "vibe coding," build a **web app** that meets a challeng
 ## Engineering standards
 
 - **TDD, ≥90% test coverage.** Write the failing test before the implementation. Coverage is enforced in CI/pre-commit — treat a coverage drop below 90% as a build failure, not a warning.
+- **Accessibility is tested, not assumed.** `e2e/home.spec.ts` runs an `@axe-core/playwright` scan against the rendered page (`npm run test:e2e`) — any new page/route should get the same scan added, not just a manual visual check. This is the automated backstop for the Design/accessibility judging criterion above.
+- **Node ≥22, npm ≥12 — pinned via `.nvmrc` and `package.json` `engines`.** An older npm (e.g. the 10.9.x some Node 22 installs bundle by default) silently drops `libc` metadata from `package-lock.json` and reintroduces lockfile drift. If you ever regenerate the lockfile, check `npm -v` first (`npm install -g npm@latest` if it's below 12).
 - **LF line endings everywhere**, enforced via `.gitattributes` (`* text=auto eol=lf`) — don't bypass it.
 - **Pre-commit hooks** (Husky, already installed) currently run lint-staged on `*.md` (`markdownlint-cli2` + `prettier --write`); `scaffold-nextjs-app` extends the same `lint-staged` config with the app's own lint/format, plus the full test suite before every commit. Don't commit with `--no-verify`; if a hook fails, fix the underlying issue.
 - **Conventional Commits, enforced at commit time.** `.husky/commit-msg` runs `commitlint` (`commitlint.config.cjs`, extends `@commitlint/config-conventional`) — non-conventional commit messages (e.g. missing a `type:` prefix) are rejected.
@@ -117,4 +128,4 @@ No default force is imposed — `tech-lead` states the actual trade-off for the 
 ## Notes
 
 - This is a weekend hackathon repo, not a long-lived codebase — favor speed and a working demo over architectural polish.
-- Don't prescribe app structure here beyond the above; update further once the scaffold is in place if there's project-specific context worth persisting (e.g. key routes, final map-draw library choice).
+- **Current app surface**: a single placeholder page (`src/app/page.tsx`) with the project name and pitch. No API routes, map, or petition-draft flow exist yet — no `.env` file or Vercel project link in this checkout either. Both become necessary once the map-draw library and AI provider decisions above are made; update this file with real routes/env-var names once those land.
