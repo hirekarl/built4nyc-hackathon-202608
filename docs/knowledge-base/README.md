@@ -15,3 +15,7 @@ Format: one fact/finding per file, most-recent status first. `status: candidate`
 
 - [Map + draw library options](./framework-map-draw.md) — Mapbox GL Draw vs. Leaflet.draw comparison. **candidate — decide at scaffold time**
 - [Vercel AI SDK for petition generation](./framework-ai-sdk.md) — chosen approach for the LLM drafting step. **candidate**
+
+## Regulations
+
+- [NYC DOT Open Streets 2026 application requirements](./regulation-open-streets-application.md) — typologies, site plan mandates, and friction points to ground the petition-generation prompt. **candidate — not yet wired into the prompt**

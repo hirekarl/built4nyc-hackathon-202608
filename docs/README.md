@@ -12,7 +12,7 @@ Source material extracted from `Built for NYC AI Hackathon 20260815-16.pdf` (the
 Project docs (not sourced from the event packet):
 
 - [PRD](./prd.md) — product requirements for the chosen project, Vision Zero Sandbox
-- [Knowledge Base](./knowledge-base/README.md) — dataset/framework research findings
+- [Knowledge Base](./knowledge-base/README.md) — dataset/framework/regulation research findings
 - [ADRs](./adr/README.md) — architecture decision records
 
 Note: The PDF also contains a signed adult Consent/Release form (Form 3) with a participant's personal signature and phone number. That page was intentionally omitted from these docs since it's a private, personally identifiable document rather than public event content.
