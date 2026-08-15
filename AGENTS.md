@@ -133,4 +133,4 @@ No default force is imposed — `tech-lead` states the actual trade-off for the 
 
 - This is a weekend hackathon repo, not a long-lived codebase — favor speed and a working demo over architectural polish.
 - **Current app surface**: a single placeholder page (`src/app/page.tsx`) with the project name and pitch. No report API route, map, report UI, optional explanation, `.env` file, or local Vercel project link exists yet. Build the deterministic map-to-report flow before optional AI or Street View work. Update this file with real routes and environment-variable names when they land.
-- **Skills available to Codex**: `.agents/skills/devpost-submission-checklist/` and `.agents/skills/scaffold-nextjs-app/` — ported from Claude Code's `.claude/skills/`, invoke explicitly with `$skill-name` or let them auto-trigger on a matching request.
+- **Skill available to Codex**: `.agents/skills/devpost-submission-checklist/` — ported from Claude Code's `.claude/skills/`; invoke it explicitly with `$devpost-submission-checklist` or let it auto-trigger on a matching request.
