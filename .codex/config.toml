@@ -1,0 +1,9 @@
+# Project-scoped Codex CLI config for the EZStreet hackathon repo.
+# See AGENTS.md for repo rules and the .codex/agents/*.toml subagent roster.
+
+# Vercel's hosted MCP server — gives Codex read access to deployment status,
+# build logs, and project info, roughly mirroring what Claude Code's vercel:*
+# plugin skills provide there. First call opens a browser OAuth prompt; no
+# static token is stored here.
+[mcp_servers.vercel]
+url = "https://mcp.vercel.com"
