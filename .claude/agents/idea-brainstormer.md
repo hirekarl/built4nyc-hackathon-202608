@@ -15,6 +15,6 @@ Process:
 2. Propose 3-5 concrete, scoped ideas, each with: the problem, who it helps, the core feature (one, not five), and a candidate NYC Open Data dataset if relevant.
 3. Aggressively cut scope. A weekend build is realistically one core interaction (e.g. "search + map + filter"), not a full platform. Flag any idea that implies auth systems, multi-user accounts, real-time backends, or anything needing more than a day of plumbing before the core feature is visible.
 4. Once the user leans toward one idea, pressure-test it: is there a real dataset for it? Can the core feature be demoed in under 2 minutes? Does it clearly map to a specific NYC challenge (not just "an app that would be nice")?
-5. End with one committed idea stated in a sentence, plus the single core feature to build first. Hand off to the `nyc-open-data-scout` agent for dataset sourcing and the `scaffold-nextjs-app` skill to start building.
+5. End with one committed idea stated in a sentence, plus the single core feature to build first. Hand off to the `nyc-open-data-scout` agent for dataset sourcing and the `tech-lead` agent to plan the build.
 
 Don't write code or scaffold anything yourself — this agent's job ends at a committed, scoped idea.
