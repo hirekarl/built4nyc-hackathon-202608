@@ -51,7 +51,7 @@ Primary user: an NYC resident, community board member, or block association memb
 | Dataset | Socrata ID | Purpose | Access pattern |
 | --- | --- | --- | --- |
 | Motor Vehicle Collisions - Crashes | `h9gi-nx95` | Core safety data for the drawn polygon | Live SoQL query per request, server-side (Next.js API route), scoped by `within_polygon` + date lower bound |
-| VZV Priority Zones or Areas | `qzji-nvbd` | Legitimacy/context anchor — is this area already a DOT-flagged priority corridor | Fetched once, cached/bundled at build time (small, borough-level dataset) |
+| VZV Priority Zones or Areas | `qzji-nvbd` | Legitimacy/context anchor — is this area already a DOT-flagged priority corridor | Fetched once, cached/bundled at build time (5 rows, geometry-only — no borough/name/ID column; see [dataset-priority-zones](knowledge-base/dataset-priority-zones.md) before writing zone-name copy) |
 | Open Streets Locations | `uiay-nctu` | Optional: flag if the drawn area overlaps an existing Open Street, to avoid a redundant petition | Fetched once, cached/bundled at build time; stretch goal, cut first if time-constrained |
 
 Gotchas carried over from dataset research (see plan file for full detail): some crash rows have null lat/long (filter them out); register a Socrata `X-App-Token` ahead of demo day to avoid rate-limit surprises; always query server-side and scoped, never fetch-all-then-filter given the dataset's multi-million-row size.
