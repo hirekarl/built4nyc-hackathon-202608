@@ -29,32 +29,61 @@ source: verified against live Socrata API (metadata + full-table aggregates), 20
 | `number_of_cyclist_injured` / `_killed` | `number` |  |
 | `number_of_motorist_injured` / `_killed` | `number` |  |
 | `contributing_factor_vehicle_1` … `_5` | `text` | Free-text category (e.g. "Failure to Yield Right-of-Way", "Aggressive Driving/Road Rage"). `"Unspecified"` is a common non-null placeholder value, not a true unknown — treat it as its own category, not as missing data. `_1` is populated far more often than `_2`–`_5`; don't assume all five are present. |
-| `collision_id` | `number` | Primary key. Join key to companion tables (see [[joins]]). |
+| `collision_id` | `number` | Primary key. Join key to companion tables (see [dataset joins](./joins.md)). |
 | `vehicle_type_code1`, `vehicle_type_code2`, `vehicle_type_code_3`, `vehicle_type_code_4`, `vehicle_type_code_5` | `text` | Note the inconsistent naming: `1`/`2` have no underscore before the digit, `_3`/`_4`/`_5` do — a real trap if you're generating field names programmatically instead of hardcoding them. |
 
 ## Verified data-quality findings
 
 Each measured via `$select=count(*)&$where=<field> IS NULL` against the full 2,269,187-row table (not a sample):
 
-- `location IS NULL`: **240,806 rows (~10.6%)**. Always filter `location IS NOT NULL` before polygon queries — confirms the existing plan.
-- `borough IS NULL`: **691,375 rows (~30.5%)** — nearly 3x the null rate of `location`. Don't use `borough` as a proxy for "is this row usable," and don't gate the polygon-scoped query or any UI badge on `borough` being present — key everything off `location`/`within_polygon`, exactly as planned, since a null `borough` doesn't mean a null `location`.
+- `location IS NULL`: **240,806 rows (~10.6%)**. Always filter `location IS NOT NULL` before spatial queries.
+- `borough IS NULL`: **691,375 rows (~30.5%)** — nearly 3x the null rate of `location`. Do not use `borough` as a proxy for whether a row is usable, and do not gate the radius query or any UI status on `borough` being present. A null `borough` does not mean a null `location`.
 - Distinct `borough` values and counts (verified via `$group=borough`): `BROOKLYN` 506,806, `QUEENS` 422,409, `MANHATTAN` 348,485, `BRONX` 234,088, `STATEN ISLAND` 66,024, plus the 691,375 null bucket. No unexpected/typo'd borough strings.
 
 ## Geospatial query — confirmed working live
 
-SoQL `within_polygon(location, 'POLYGON((lon lat, lon lat, ...))')` — coordinate order is **longitude latitude**, opposite of typical Leaflet/Mapbox draw output. Convert carefully; this is a real bug source. Verified live (not just theoretical): ran the example query below against the production endpoint and got 3 real `collision_id`s back.
+The MVP uses SoQL `within_circle(location, latitude, longitude, radius)` with a 50-meter radius and a complete calendar-year interval. The radius is in meters. Keep latitude and longitude named and validated so their order cannot be swapped.
 
-- **Scale caveat:** never fetch-all-then-filter — always scope server-side by `within_polygon` + a `crash_date` lower bound (e.g. last 3–5 years) and a `$limit`.
+- **Scale caveat:** never fetch-all-then-filter. Scope every request server-side by `within_circle`, `crash_date`, and `location IS NOT NULL`, and select only required fields.
 - **Auth:** no token required for low-volume demo use, but register a Socrata `X-App-Token` (5 min, at data.cityofnewyork.us/profile/app_tokens) before demo day to avoid rate-limit surprises on the unthrottled tier (~1000 req/rolling window).
-- **Companion tables:** Motor Vehicle Collisions - Vehicles (`bm4k-52h4`), Motor Vehicle Collisions - Person (`f55k-p6yu`) — join by `collision_id`, not needed for MVP. Full join documentation, including a verified FK gotcha: [[joins]].
+- **Companion tables:** Motor Vehicle Collisions - Vehicles (`bm4k-52h4`), Motor Vehicle Collisions - Person (`f55k-p6yu`) — join by `collision_id`, not needed for MVP. Full join documentation, including a verified FK gotcha: [dataset joins](./joins.md).
 
-Example query (verified against the live endpoint):
+Query shape:
 
 ```text
 GET https://data.cityofnewyork.us/resource/h9gi-nx95.json
-  ?$select=crash_date,contributing_factor_vehicle_1,contributing_factor_vehicle_2,number_of_persons_injured,number_of_persons_killed,location
-  &$where=within_polygon(location, 'POLYGON((-73.99 40.73, -73.98 40.73, -73.98 40.74, -73.99 40.74, -73.99 40.73))') AND crash_date > '2019-01-01' AND location IS NOT NULL
+  ?$select=<documented report fields>
+  &$where=within_circle(location, <latitude>, <longitude>, 50)
+    AND crash_date >= '2025-01-01T00:00:00.000'
+    AND crash_date < '2026-01-01T00:00:00.000'
+    AND location IS NOT NULL
   &$limit=5000
 ```
 
-Used by: [PRD §6](../prd.md#6-data-sources).
+## Verified intersection fixtures
+
+Live queries on August 15, 2026 returned:
+
+| Intersection | Radius | Crashes | Injured | Killed | Data-quality note |
+| --- | ---: | ---: | ---: | ---: | --- |
+| W 40 ST at 5 AVE | 50 m | 6 | 7 | 1 | ordinary naming fixture |
+| E 42 ST at PARK AVE | 50 m | 9 | 4 | 0 | 3 rows missing `on_street_name` |
+
+Radius sensitivity confirmed why the server must own the boundary:
+
+| Intersection | 25 m | 50 m | 75 m | 100 m |
+| --- | ---: | ---: | ---: | ---: |
+| W 40 ST at 5 AVE | 6 | 6 | 6 | 18 |
+| E 42 ST at PARK AVE | 6 | 9 | 12 | 15 |
+
+The 100-meter Bryant Park jump begins absorbing nearby blocks. The accepted MVP radius is 50 meters.
+
+## Failure and missing-data rules
+
+- An unavailable API produces a partial report, never zero crashes.
+- Missing required numeric fields produce `null` for affected metrics.
+- A successful zero-row response produces valid zero totals and neutral copy.
+- Missing `on_street_name` does not invalidate a coordinate-radius match; disclose the label gap.
+- Keep `Unspecified` contributing factors separate from ranked named factors.
+
+Used by: [PRD §§7–13](../prd.md), [ADR 0003](../adr/0003-intersection-selection-and-analysis-boundary.md), [ADR 0005](../adr/0005-deterministic-report-and-bounded-ai.md).

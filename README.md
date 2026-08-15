@@ -2,61 +2,56 @@
 
 Entry for the **Built for NYC: AI Hackathon**, presented by The New York Public Library (NYPL) and Major League Hacking (MLH), Aug 15–16, 2026, at the Stavros Niarchos Foundation Library (SNFL).
 
-Draw a polygon over a dangerous NYC street segment and get back a data-backed safety case — live NYPD collision data scoped to that exact area, checked against DOT's Vision Zero Priority Zones — plus an AI-drafted petition letter to DOT you can review, edit, and copy or download. The app never submits anything on your behalf.
+EZStreet lets a New Yorker select an official street intersection and generate a sourced safety report for the surrounding 50-meter area. The report uses NYC Open Data to show crashes, injuries, deaths, road-user breakdowns, contributing factors, Priority Zone context, data limitations, and source provenance.
 
 ## The problem
 
-NYC residents who see dangerous street conditions — near-misses, speeding, no safe crossing — usually know exactly where the problem is, but backing a DOT petition (Open Streets / Street Pedestrian Plaza programs) with real data means cross-referencing NYPD collision records and DOT's priority-corridor data by hand. That's more effort than most people will take on, so good petitions don't get written.
+NYC collision data is public, but answering a local question such as “What has been reported around this intersection?” still requires GIS knowledge, dataset research, and careful interpretation. EZStreet turns that work into a visible, repeatable map-to-report flow without inventing missing facts or making unsupported claims about whether a street is safe.
 
 ## How it works
 
-1. Draw a polygon over a street segment or plaza-candidate area on a map.
-2. The app queries live NYC collision data scoped to that exact polygon, server-side.
-3. It shows a safety summary: crash counts, injuries/fatalities, top contributing factors.
-4. It checks whether the polygon overlaps a DOT-designated Priority Zone and flags a match.
-5. An LLM drafts a petition letter to DOT grounded in that data.
-6. You review and edit the draft before copying or downloading it — nothing is auto-submitted.
+1. The map loads official NYC Street Centerline data for the current viewport.
+2. The user hovers over and selects one official surface-street intersection.
+3. EZStreet shows the official intersection name and a fixed 50-meter analysis boundary.
+4. The server queries calendar-year 2025 collision records within that boundary and computes all report facts deterministically.
+5. The report displays metrics, Priority Zone context, limitations, and links to its NYC Open Data sources.
+6. The user can print or download the same report shown on screen.
 
-## Data sources ([NYC Open Data](https://opendata.cityofnewyork.us/))
+If a required source or metric is unavailable, EZStreet labels the result **Partial**, keeps any valid results, identifies the missing data, and offers a retry. It never converts a failed request into a zero.
+
+## Data sources
 
 | Dataset | Socrata ID | Purpose |
 | --- | --- | --- |
-| Motor Vehicle Collisions - Crashes | `h9gi-nx95` | core safety data, queried per-polygon |
-| VZV Priority Zones or Areas | `qzji-nvbd` | legitimacy/context anchor — Priority Zone overlap check |
-| Open Streets Locations | `uiay-nctu` | avoid redundant petitions (stretch goal) |
+| Motor Vehicle Collisions - Crashes | `h9gi-nx95` | Core safety metrics queried within the 50-meter circle |
+| VZV Priority Zones or Areas | `qzji-nvbd` | Priority-area overlap context; the dataset has no zone name or ID |
+| NYC Street Centerline | `inkn-q76z` | Selectable street geometry, official names, nodes, and physical IDs |
 
-Targeting the **Best Use of NYC Open Data** track, alongside the General category. See [`docs/prd.md`](./docs/prd.md) for full product requirements and [`docs/knowledge-base/`](./docs/knowledge-base/README.md) for dataset and framework research.
+The MVP targets the **Best Use of NYC Open Data** track alongside the General category. See [`docs/prd.md`](./docs/prd.md) for the product and frontend requirements, [`docs/adr/`](./docs/adr/README.md) for accepted decisions, and [`docs/knowledge-base/`](./docs/knowledge-base/README.md) for dataset and framework evidence.
+
+## Optional features after the core flow
+
+- A user-triggered **Explain this report** action that gives the model only the structured report. AI may explain facts but cannot calculate, change, or hide them.
+- Native Google Street View Pegman for visual context, with a custom draggable person as a later option.
+- Petition or permit support, user observations, a street-segment buffer, and editable exports.
 
 ## Stack
 
-Next.js 16 (App Router) + React 19 + Tailwind v4, deployed on Vercel, with the Vercel AI SDK powering petition drafting. Map/draw library and LLM provider are still open decisions — tracked in [`docs/knowledge-base/`](./docs/knowledge-base/README.md).
+Next.js 16 (App Router), React 19, Tailwind CSS v4, MapLibre GL JS, and OpenFreeMap Bright, deployed on Vercel. The model provider for the optional explanation remains a team implementation decision.
 
 ## Status
 
-Idea locked in, app scaffolded (Next.js, tests, CI, Husky hooks) — see [`CLAUDE.md`](./CLAUDE.md) for engineering standards. Feature code (map, polygon drawing, API routes, AI drafting) isn't built yet.
-
-## Docs
-
-Event source material and project docs live in [`docs/`](./docs) — see [`docs/README.md`](./docs/README.md) for the full index (official rules, agenda, judging criteria, FAQs, PRD, knowledge base, ADRs).
+The app is scaffolded but still shows a placeholder page. The map, report API, report UI, download, Priority Zone check, and optional AI explanation are not implemented yet.
 
 ## Workflow
 
-- Feature branches + PRs only, merged into `main` via rebase — no direct commits to `main`.
-- Conventional Commits, enforced at commit time via commitlint.
-- Markdown is linted and formatted via `npm run lint:md` / `npm run format:md` (markdownlint-cli2 + Prettier), enforced by a pre-commit hook.
+- Feature branches and pull requests only; no direct commits to `main`.
+- Rebase before merge.
+- Conventional Commits, enforced by commitlint.
+- TDD with the repository's coverage gate.
+- Markdown formatting and linting through the existing npm scripts.
 
-Full engineering standards (TDD, ≥90% coverage gate, CI) are wired up — see [`CLAUDE.md`](./CLAUDE.md) for details.
-
-### End-to-end tests
-
-E2E tests run via [Playwright](https://playwright.dev), with [`@axe-core/playwright`](https://github.com/dequelabs/axe-core-npm/tree/develop/packages/playwright) scanning every page for accessibility violations. Specs live in [`e2e/`](./e2e). Run them locally with:
-
-```sh
-npx playwright install # one-time browser install
-npm run test:e2e
-```
-
-They run as a blocking job in CI (`.github/workflows/ci.yml`) but are not part of the pre-commit hook, since they need a full build + running server.
+See [`CLAUDE.md`](./CLAUDE.md) for the complete engineering workflow and [`docs/README.md`](./docs/README.md) for the documentation index.
 
 ## Submission
 

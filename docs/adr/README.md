@@ -5,7 +5,10 @@ Short records of significant, hard-to-reverse technical decisions for this proje
 ## Index
 
 - [0001 - Record architecture decisions](./0001-record-architecture-decisions.md)
-- [0002 - Petition download format is PDF](./0002-petition-download-format-pdf.md)
+- [0002 - Petition download format is PDF](./0002-petition-download-format-pdf.md) — superseded by 0005
+- [0003 - Use official intersection selection and a fixed analysis boundary](./0003-intersection-selection-and-analysis-boundary.md)
+- [0004 - Use MapLibre GL JS with OpenFreeMap](./0004-maplibre-openfreemap.md)
+- [0005 - Make the safety report deterministic and bound AI to explanation](./0005-deterministic-report-and-bounded-ai.md)
 
 ## Process
 

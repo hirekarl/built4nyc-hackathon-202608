@@ -22,22 +22,25 @@ source: verified against live Socrata API (metadata + full-table query), 2026-08
 
 **There is no borough name, zone ID, zone name, or ranking/tier column.** Nothing in the data itself says which borough a given polygon belongs to, let alone a citable zone identity.
 
-## Discrepancy vs. PRD/original KB assumption — read before writing petition-generation copy
+## Display constraint
 
-The PRD (§6, §8) and the original version of this file described the app being able to say "this segment falls within DOT's own Priority Zone X" — that phrasing implies a citable zone name/ID. **The dataset has no such attribute.** The 5-rows-for-5-boroughs pattern is a reasonable guess but isn't confirmed by the data (no `borough` column to check it against).
+The original product direction assumed the app could cite a specific zone name. **The dataset has no such attribute.** The 5-rows-for-5-boroughs pattern is a reasonable inference, but it is not confirmed by any field.
 
-Two ways to close this gap, neither implemented yet — flagging so whoever writes the AI-prompt/summary-panel copy sees it before assuming a zone name exists:
+The report supports only:
 
-1. **Soften the copy** to "falls within a DOT Vision Zero priority area" (no specific zone name) — zero extra engineering.
-2. **Derive the borough** the overlapping polygon belongs to via a separate step (e.g. reverse-geocode the polygon's centroid, or intersect against a real NYC borough-boundaries dataset) if a borough-qualified claim ("a Bronx priority area") is wanted. Adds a dependency on a 6th dataset or geocoding call — evaluate against remaining time budget.
+- `Matched — the analysis boundary overlaps a DOT Vision Zero priority area`;
+- `Not matched — no overlap was found`; or
+- `Unavailable — the source could not be checked`.
+
+Do not display a zone name, zone ID, borough-qualified zone, or ranking.
 
 ## Access pattern
 
 - **Scale:** 5 rows, ~large geometries each — fetch once and cache/bundle at build time rather than querying live per-request (confirmed cheap: full dataset is small despite big polygons).
-- **Spatial join with the user-drawn polygon:** `the_geom` is a multipolygon, not a point, so SoQL's `within_polygon` (point-in-polygon) doesn't apply here. See [[joins]] for the recommended client-side approach (Turf.js) for polygon-polygon overlap.
+- **Spatial join with the selected circle:** `the_geom` is a multipolygon, not a point, so SoQL's `within_polygon` does not apply. Fetch the five rows and use a tested geometry operation between the 50-meter circle and each multipolygon. See [dataset joins](./joins.md).
 
 ## Why it matters for this project
 
-This is the strongest originality/legitimacy anchor in the whole app, caveat above notwithstanding — checking whether a user-drawn polygon overlaps a DOT-designated Priority Zone is a cross-dataset synthesis not exposed anywhere in NYC's existing Vision Zero View tool, and the core of the Best Use of NYC Open Data pitch. Just don't let the generated copy claim a zone name/ID the data can't back up.
+The overlap adds official city context to the sourced safety report and makes the cross-dataset analysis visible. It does not change collision totals and must not be framed as a government endorsement or a named zone claim.
 
-Used by: [PRD §6](../prd.md#6-data-sources), [PRD §8 design](../prd.md#8-design--ux-priorities) (Priority Zone match badge). Join details: [[joins]].
+Used by: [PRD §§6–8](../prd.md), [ADR 0005](../adr/0005-deterministic-report-and-bounded-ai.md). Join details: [dataset joins](./joins.md).

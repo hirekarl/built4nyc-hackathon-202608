@@ -21,9 +21,10 @@ Using generative AI and "vibe coding," build a **web app** that meets a challeng
 ## Stack & workflow
 
 - **Next.js (App Router)**, deployed on **Vercel**. Use the `vercel:*` skills already available in this environment (`vercel:bootstrap`, `vercel:deploy`, `vercel:nextjs`, `vercel:vercel-storage`, etc.) for anything Vercel/Next.js-specific — don't re-derive that guidance here.
-- **Project idea is locked in and scaffolded**: Vision Zero Sandbox. `docs/prd.md` is the product spec, `docs/knowledge-base/` holds dataset/framework/regulation research, `docs/adr/` holds architecture decisions made along the way (e.g. ADR-0002, petition download format is PDF).
+- **Project direction is locked in and scaffolded**: EZStreet. `docs/prd.md` is the product and frontend source of truth, `docs/knowledge-base/` holds dataset/framework evidence, and `docs/adr/` holds accepted architecture decisions.
 - **Not yet linked to a Vercel project locally** (no `.vercel/` in this checkout) — run `vercel:bootstrap` when ready to deploy; check with the team first in case a project already exists on Vercel.
-- **Two architecture decisions are still open and block real feature work**: the map-draw library (`docs/knowledge-base/framework-map-draw.md` — Mapbox GL Draw vs. Leaflet.draw) and the AI SDK provider for petition generation (`docs/knowledge-base/framework-ai-sdk.md`). Both need an ADR (per the Multi-agent build workflow below) before `builder` starts on the features that depend on them.
+- **Accepted core decisions**: select official intersections with a 50-meter boundary (ADR-0003), use MapLibre GL JS with OpenFreeMap Bright (ADR-0004), and generate the sourced safety report deterministically (ADR-0005). The official NYC Street Centerline SODA dataset is `inkn-q76z`.
+- **Optional AI setup remains open**: the model/provider and access test for `Explain this report` are team implementation decisions. AI work must not block the deterministic map-to-report slice.
 - Before submitting, run the `devpost-submission-checklist` skill.
 
 ## Commands
@@ -55,18 +56,18 @@ Using generative AI and "vibe coding," build a **web app** that meets a challeng
 
 ## Multi-agent build workflow
 
-This is a **team project** — anyone on the team can dispatch these agents, so the handoff protocol below is the shared contract, not one person's convention. The idea (EZStreet — `docs/prd.md`) and Open Data datasets (`docs/knowledge-base/`) are locked in. Once `scaffold-nextjs-app` has run, feature work for the app itself flows through a lean 3-agent roster (`.claude/agents/`), role-named (not aliased) so any teammate can tell what an agent does without cross-referencing a roster:
+This is a **team project** — anyone on the team can dispatch these agents, so the handoff protocol below is the shared contract, not one person's convention. The idea (EZStreet — `docs/prd.md`), core architecture (`docs/adr/`), and verified Open Data rules (`docs/knowledge-base/`) are locked in. Feature work for the app itself flows through a lean 3-agent roster (`.claude/agents/`), role-named (not aliased) so any teammate can tell what an agent does without cross-referencing a roster:
 
 | Agent | Role | May edit files? | When |
 | --- | --- | --- | --- |
 | `tech-lead` | Plans | No (read-only) | Non-trivial feature asks — turns them into a `[SPEC]` (≤5 files, names a Verification Oracle, states the Bounded-AI boundary). Skip for trivial one-file changes. |
 | `sdet` | Tests | Tests only | Writes the failing test first (TDD red) per the SPEC's oracle, then audits `builder`'s work — PASS/FAIL incl. the 90% coverage gate. |
-| `builder` | Implements | Yes | Single full-stack implementer (API route + UI + AI SDK call) — makes `sdet`'s red go green. |
+| `builder` | Implements | Yes | Single full-stack implementer for the assigned API, data, UI, or optional AI slice — makes `sdet`'s red go green. |
 | `reviewer` | Mediates/refactors | Yes (refactors) | **On-demand only.** Mediates after 2 failed `sdet` cycles on the same task, or handles a tree-wide mechanical refactor. |
 
-**What's deliberately cut**, to keep ceremony proportional to a 24-hour build: no dedicated routing/context-scout agents (the orchestrating session does this directly), no `SESSION_STATE.md` ledger (git history + the PRD are enough continuity for a weekend), no per-task `specs/NNN-slug.md` files (a `[SPEC]` is relayed inline in the handoff, not persisted) — the only persisted decision trail is `docs/adr/` for genuine architecture calls (map-draw library, AI provider, overlap-computation approach), using the existing `docs/adr/template.md`.
+**What's deliberately cut**, to keep ceremony proportional to a 24-hour build: no dedicated routing/context-scout agents (the orchestrating session does this directly), no `SESSION_STATE.md` ledger (git history + the PRD are enough continuity for a weekend), no per-task `specs/NNN-slug.md` files (a `[SPEC]` is relayed inline in the handoff, not persisted) — the only persisted decision trail is `docs/adr/` for decisions that are costly to reverse, using the existing `docs/adr/template.md`.
 
-**Bounded-AI boundary** (the one rule that's non-negotiable regardless of ceremony level): every crash count, injury/fatality tally, contributing-factor rollup, and Priority Zone overlap is computed deterministically, server-side, before the single LLM call. The LLM only turns that computed summary into petition prose — it never computes or adjusts a number, and its output is validated before being rendered.
+**Bounded-AI boundary** (the one rule that's non-negotiable regardless of ceremony level): every crash count, injury/fatality tally, contributing-factor rollup, Priority Zone overlap, completeness status, and source limitation is computed deterministically before any LLM call. The optional model receives only the structured report and may explain it in plain language. It never computes or changes facts, claims causation or safety, hides a partial status, or controls whether the factual report renders.
 
 **Default flow:** non-trivial ask → `tech-lead` (`[SPEC]`) → `sdet` (red) → `builder` (green) → `sdet` (audit) → merge. Trivial changes skip straight to `builder`. This composes with, not replaces, the existing TDD/coverage/Conventional-Commits/no-AI-trailer rules above — the agents are how those rules get executed, not an additional layer on top of them.
 
@@ -81,10 +82,10 @@ Canonical location — the agent files in `.claude/agents/` reference these by n
 
 - **Objective**: <what the code must achieve>
 - **Inputs/Outputs**: <types, shapes, API contract>
-- **Bounded-AI boundary**: <deterministic vs. LLM-generated — required if the task touches the petition-draft path>
+- **Bounded-AI boundary**: <deterministic vs. LLM-generated — required if the task touches the optional explanation path>
 - **Verification Oracle**: <REQUIRED. Where the failure is observable — a vitest/RTL test, a Playwright flow, an API route test>
 - **Constraints**: <performance, forbidden libraries, style>
-- **Edge Cases**: <error handling, empty polygon, zero-crash result, LLM failure/timeout>
+- **Edge Cases**: <error handling, invalid intersection, partial report, zero-crash result, LLM failure/timeout>
 - **Files**: <max 5 files this task may touch>
 ```
 
@@ -119,7 +120,7 @@ No default force is imposed — `tech-lead` states the actual trade-off for the 
 - **Files changed**: <list>
 - **Spec items satisfied**: <checklist against the SPEC>
 - **Oracle status**: <the declared oracle, the command run, and its verdict>
-- **Bounded-AI boundary**: <confirm what's deterministic vs. LLM-generated, if the task touched the petition path>
+- **Bounded-AI boundary**: <confirm what's deterministic vs. LLM-generated, if the task touched the optional explanation path>
 - **Known gaps**: <anything deferred, or "none">
 ```
 
@@ -128,4 +129,4 @@ No default force is imposed — `tech-lead` states the actual trade-off for the 
 ## Notes
 
 - This is a weekend hackathon repo, not a long-lived codebase — favor speed and a working demo over architectural polish.
-- **Current app surface**: a single placeholder page (`src/app/page.tsx`) with the project name and pitch. No API routes, map, or petition-draft flow exist yet — no `.env` file or Vercel project link in this checkout either. Both become necessary once the map-draw library and AI provider decisions above are made; update this file with real routes/env-var names once those land.
+- **Current app surface**: a single placeholder page (`src/app/page.tsx`) with the project name and pitch. No report API route, map, report UI, optional explanation, `.env` file, or local Vercel project link exists yet. Build the deterministic map-to-report flow before optional AI or Street View work. Update this file with real routes and environment-variable names when they land.
