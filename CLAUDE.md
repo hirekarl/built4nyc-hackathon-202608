@@ -22,6 +22,7 @@ Using generative AI and "vibe coding," build a **web app** that meets a challeng
 
 - **Next.js (App Router)**, deployed on **Vercel**. Use the `vercel:*` skills already available in this environment (`vercel:bootstrap`, `vercel:deploy`, `vercel:nextjs`, `vercel:vercel-storage`, etc.) for anything Vercel/Next.js-specific — don't re-derive that guidance here.
 - **Project direction is locked in and scaffolded**: EZStreet. `docs/prd.md` is the product and frontend source of truth, `docs/knowledge-base/` holds dataset/framework evidence, and `docs/adr/` holds accepted architecture decisions.
+- **Build plan**: `docs/plans/ezstreet-implementation-plan.md` is the step-by-step, TDD-ready implementation plan (frontend → backend → integration, per [issue #21](https://github.com/hirekarl/ezstreet/issues/21)'s ownership split) — every checklist item there is a pre-written `[SPEC]`/`[SPIKE]` + `[FORCES]` block ready to relay to `sdet`/`builder`.
 - **Not yet linked to a Vercel project locally** (no `.vercel/` in this checkout) — run `vercel:bootstrap` when ready to deploy; check with the team first in case a project already exists on Vercel.
 - **Accepted core decisions**: select official intersections with a 50-meter boundary (ADR-0003), use MapLibre GL JS with OpenFreeMap Bright (ADR-0004), and generate the sourced safety report deterministically (ADR-0005). The official NYC Street Centerline SODA dataset is `inkn-q76z`.
 - **Optional AI setup remains open**: the model/provider and access test for `Explain this report` are team implementation decisions. AI work must not block the deterministic map-to-report slice.
@@ -56,7 +57,7 @@ Using generative AI and "vibe coding," build a **web app** that meets a challeng
 
 ## Multi-agent build workflow
 
-This is a **team project** — anyone on the team can dispatch these agents, so the handoff protocol below is the shared contract, not one person's convention. The idea (EZStreet — `docs/prd.md`), core architecture (`docs/adr/`), and verified Open Data rules (`docs/knowledge-base/`) are locked in. Feature work for the app itself flows through a lean 3-agent roster (`.claude/agents/`), role-named (not aliased) so any teammate can tell what an agent does without cross-referencing a roster:
+This is a **team project** — anyone on the team can dispatch these agents, so the handoff protocol below is the shared contract, not one person's convention. The idea (EZStreet — `docs/prd.md`), core architecture (`docs/adr/`), and verified Open Data rules (`docs/knowledge-base/`) are locked in. `docs/plans/ezstreet-implementation-plan.md` sequences all of this into phased, ownership-assigned steps — pull each task's `[SPEC]`/`[SPIKE]` + `[FORCES]` block straight from there rather than re-deriving one from scratch. Feature work for the app itself flows through a lean 3-agent roster (`.claude/agents/`), role-named (not aliased) so any teammate can tell what an agent does without cross-referencing a roster:
 
 | Agent | Role | May edit files? | When |
 | --- | --- | --- | --- |
