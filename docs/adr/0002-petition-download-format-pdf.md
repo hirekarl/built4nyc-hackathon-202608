@@ -1,6 +1,6 @@
 # 0002 - Petition download format is PDF
 
-Status: Accepted
+Status: Superseded by [ADR 0005](./0005-deterministic-report-and-bounded-ai.md)
 
 ## Context
 
@@ -18,3 +18,7 @@ The petition download format is **PDF**, not text/markdown. This supersedes the 
 ## Consequences
 
 Implementation will need to add a PDF-generation dependency, since none exists in `package.json` today (no `jsPDF`, `@react-pdf/renderer`, `pdf-lib`, or `puppeteer`). The specific approach is deferred to whoever implements the download feature (browser print-to-PDF needs no new dependency and fits the Vercel Functions/serverless constraints most easily; a library adds more layout control at the cost of bundle size or server rendering time). `docs/prd.md` §5 step 6 is updated to say "PDF" so the PRD and this ADR stay consistent.
+
+## Supersession note
+
+The product direction changed from an AI-drafted petition to a deterministic street-safety report. The MVP now provides a generic print/download action using the same report object shown in the UI. Petition generation, a finalized document format, and editable PDF output are optional later features. This ADR remains as decision history and no longer directs the current implementation.

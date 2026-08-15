@@ -1,52 +1,54 @@
 ---
 type: reference
-status: adopted (attribute join) / candidate (spatial joins)
-source: verified against live Socrata API, 2026-08-15
+status: adopted for MVP spatial relationships
+source: verified against official dataset metadata and live queries, 2026-08-15
 ---
 
-# Dataset joins
+# Dataset joins and spatial relationships
 
-How the datasets in [[dataset-crashes]], [[dataset-priority-zones]], and [[dataset-open-streets-locations]] (plus the two crash companion tables) relate to each other, verified live rather than assumed from field names.
+EZStreet does not use a database join for its MVP. It connects official centerlines, collision points, and Priority Zone multipolygons through one locked intersection selection and tested spatial operations.
 
-## Attribute join: crashes ↔ vehicles ↔ person
+## Centerline records to intersection selection
 
-All three share `collision_id` as a `number` field, same type on both sides, no conversion needed:
+1. Load eligible centerline features for the current map viewport.
+2. Normalize official names, endpoint coordinates, and physical IDs.
+3. Group exact shared endpoint coordinates to form ordinary intersection candidates.
+4. Expose candidates with at least two eligible named streets.
+5. Preserve contributing physical IDs and official street names in the locked selection.
 
-- `h9gi-nx95.collision_id` (Motor Vehicle Collisions - Crashes)
-- `bm4k-52h4.collision_id` (Motor Vehicle Collisions - Vehicles)
-- `f55k-p6yu.collision_id` (Motor Vehicle Collisions - Person)
+The Bryant Park fixture proved the ordinary case. Grand Central exposed multiple roadbeds and a viaduct, so complex nodes need an explicit limitation or later official naming fallback.
 
-Verified live: took the most recent crash's `collision_id` and confirmed the same value is present in both companion tables.
+## Intersection selection to collision points
 
-Row counts (verified via `$select=count(*)`): crashes 2,269,187 / vehicles 4,551,002 / person 5,984,110. Both companions are natural 1-to-many off `collision_id` (multiple vehicles and multiple people per crash) — the ratios are consistent with that.
+Use the selected official coordinate directly in the server-side Socrata query:
 
-### Gotcha: person → vehicle join key, verified by direct lookup
+```text
+within_circle(location, latitude, longitude, 50)
+```
 
-`f55k-p6yu.vehicle_id` does **not** join to `bm4k-52h4.vehicle_id`. It joins to `bm4k-52h4.unique_id`.
+Also filter to calendar year 2025 and `location IS NOT NULL`. This is a spatial relationship, not an attribute join. Street-name fields may be absent and must not determine whether a point inside the circle is counted.
 
-Verified: took a real `f55k-p6yu.vehicle_id` value (`19141108`) and looked it up two ways:
+## Intersection circle to Priority Zones
 
-- As `bm4k-52h4.unique_id` → **one match**, with a matching `collision_id`. Correct join.
-- As `bm4k-52h4.vehicle_id` → **zero matches**.
+`qzji-nvbd.the_geom` is a multipolygon. Fetch and cache the five source rows, create the selected 50-meter circle in WGS84 longitude/latitude order, and run a tested polygon-intersection operation.
 
-Why: `bm4k-52h4.vehicle_id` is a per-crash-scoped identifier with an inconsistent format across rows — sometimes a small sequence number (`"1"`, `"2"`), sometimes a UUID — while `bm4k-52h4.unique_id` is the table's real primary key, which is what `person.vehicle_id` actually references. Not needed for MVP scope (neither companion table is currently planned for use), but documented so this doesn't cost someone debugging time later.
+Return only:
 
-## Spatial join: crashes ↔ priority zones ↔ open streets
+- `matched`;
+- `not_matched`; or
+- `unavailable`.
 
-The user-drawn polygon needs to be checked against all three geometry-bearing datasets, but they don't all support the same query strategy:
+The source has no zone name, ID, borough, or ranking field.
 
-| Dataset | Geometry type | Query strategy |
-| --- | --- | --- |
-| Crashes (`h9gi-nx95`) | Point (`location`) | Server-side SoQL `within_polygon(location, 'POLYGON(...)')` — point-in-polygon, confirmed working live against the production endpoint. |
-| Priority Zones (`qzji-nvbd`) | Multipolygon (`the_geom`), 5 rows | No server-side polygon-polygon function in SoQL. Fetch all 5 rows once (tiny), compute overlap client/server-side. |
-| Open Streets (`uiay-nctu`) | Multiline (`the_geom`), 391 rows | No server-side line-polygon function in SoQL either. Fetch all 391 rows once (still small), compute intersection client/server-side. |
+## Coordinate rules
 
-Both Priority Zones and Open Streets are small enough to match the existing "fetch once, cache/bundle at build time" plan in each dataset's KB entry — so the fetch-everything approach isn't just a workaround, it's already the intended access pattern for both.
+- The centerline and Priority Zone geometries use WGS84 longitude/latitude coordinates.
+- Socrata `within_circle` takes named latitude and longitude arguments followed by meters.
+- Geometry libraries commonly expect longitude/latitude array order.
+- Add a test that fails when coordinate order or radius units are reversed.
 
-**Recommended library:** Turf.js (`@turf/boolean-intersects` for a yes/no overlap check) — already referenced in [[framework-map-draw]] for WKT conversion, so this reuses that dependency rather than adding a new one.
+## Companion collision tables
 
-**Coordinate system:** all three datasets use plain WGS84 lon/lat pairs — verified by inspecting raw coordinate values in each dataset's GeoJSON-shaped geometry fields (e.g. Priority Zones' `the_geom.coordinates` fall in the expected NYC lon/lat range). No projection conversion needed between datasets.
+The Vehicles (`bm4k-52h4`) and Person (`f55k-p6yu`) tables are not required for the MVP. If used later, both join to Crashes through `collision_id`. A Person `vehicle_id` maps to Vehicles `unique_id`, not Vehicles `vehicle_id`.
 
-**Known gap before relying on this for petition copy:** Priority Zones has no borough/name/ID attribute to cite once an overlap is found — see [[dataset-priority-zones]] for the discrepancy this creates against the PRD's planned petition language. Open Streets overlap results are subject to the staleness caveat in [[dataset-open-streets-locations]] — an overlap found there reflects a lapsed 2024–2025 program window, not necessarily current status.
-
-Used by: [PRD §6](../prd.md#6-data-sources).
+Used by: [PRD §§7–13](../prd.md), [dataset-crashes](./dataset-crashes.md), [dataset-priority-zones](./dataset-priority-zones.md), and [dataset-nyc-street-centerline](./dataset-nyc-street-centerline.md).

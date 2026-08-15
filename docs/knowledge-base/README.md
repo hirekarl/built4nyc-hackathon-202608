@@ -6,16 +6,17 @@ Format: one fact/finding per file, most-recent status first. `status: candidate`
 
 ## Datasets
 
-- [Motor Vehicle Collisions - Crashes](./dataset-crashes.md) — `h9gi-nx95`, core geospatial crash data, 2.27M rows verified. **adopted**
-- [VZV Priority Zones or Areas](./dataset-priority-zones.md) — `qzji-nvbd`, DOT's priority-corridor polygons; verified 5 rows, **no borough/name/ID attribute** — see file for petition-copy implications. **adopted, schema caveat**
-- [Open Streets Locations](./dataset-open-streets-locations.md) — `uiay-nctu`, 391 rows; verified **every row's program window has already lapsed** (newest end date 2025-07-31) — see file for staleness impact on the redundancy check. **candidate**
-- [Dataset joins](./joins.md) — verified join keys: `collision_id` across crashes/vehicles/person (with a person→vehicle FK gotcha), plus the client-side spatial-join approach for the two polygon/line datasets. **reference**
+- [NYC Street Centerline](./dataset-nyc-street-centerline.md) — `inkn-q76z`, official street geometry, names, nodes, and physical IDs used for viewport loading and intersection selection. **adopted**
+- [Motor Vehicle Collisions - Crashes](./dataset-crashes.md) — `h9gi-nx95`, core geospatial crash data queried with `within_circle`; two live 2025 fixtures verified. **adopted**
+- [VZV Priority Zones or Areas](./dataset-priority-zones.md) — `qzji-nvbd`, DOT priority-area multipolygons; verified 5 rows and **no borough/name/ID attribute**. **adopted, schema caveat**
+- [Open Streets Locations](./dataset-open-streets-locations.md) — `uiay-nctu`; optional research retained from the former petition direction and not used by the MVP. **deferred**
+- [Dataset joins and spatial relationships](./joins.md) — centerline-node selection, collision radius queries, and Priority Zone overlap. **reference**
 
 ## Frameworks & tools
 
-- [Map + draw library options](./framework-map-draw.md) — Mapbox GL Draw vs. Leaflet.draw comparison. **candidate — decide at scaffold time**
-- [Vercel AI SDK for petition generation](./framework-ai-sdk.md) — chosen approach for the LLM drafting step. **candidate**
+- [Map renderer](./framework-map-draw.md) — MapLibre GL JS with OpenFreeMap Bright; hover/click spike passed. **adopted**
+- [Vercel AI SDK for optional report explanation](./framework-ai-sdk.md) — bounded AI role and unresolved model-provider setup. **optional**
 
 ## Regulations
 
-- [NYC DOT Open Streets 2026 application requirements](./regulation-open-streets-application.md) — typologies, site plan mandates, and friction points to ground the petition-generation prompt. **candidate — not yet wired into the prompt**
+- [NYC DOT Open Streets 2026 application requirements](./regulation-open-streets-application.md) — retained research for an optional future petition or permit feature; not part of the MVP. **deferred**

@@ -1,89 +1,295 @@
 # Product Requirements Document: EZStreet
 
-Status: draft, pre-scaffold. Idea evaluated and approved against the judging rubric — see `.claude/plans/rayan-proposed-the-following-validated-backus.md` for that evaluation (local, not checked in). This PRD is the source of truth for scope going into `scaffold-nextjs-app`.
+Status: accepted product direction, pre-implementation. This PRD is the source of truth for product scope, user behavior, and the frontend interface. ADRs define the accepted technical boundaries. Knowledge-base files provide source evidence and implementation details.
 
-## 1. Problem
+## 1. Product thesis
 
-New Yorkers who witness dangerous conditions on a specific block or corridor — frequent near-misses, speeding, a lack of a safe crossing — often know exactly where the problem is but have no easy way to back that knowledge with data when petitioning the city. NYC DOT's Open Streets and Street Pedestrian Plaza programs both accept community-driven applications, but building a credible case today means manually cross-referencing NYPD collision records, figuring out DOT's own street-safety prioritization, and writing a formal petition — a research and writing burden most residents won't take on alone.
+A New Yorker can select one official street intersection and receive a clear, downloadable safety report grounded in NYC Open Data.
 
-## 2. Solution
+EZStreet converts an official centerline node into a visible 50-meter analysis boundary, queries collision points inside it, and computes every factual result deterministically. The product reports what the sources contain, identifies missing data, and does not claim that an intersection is safe or unsafe.
 
-EZStreet is a web app where a user draws a polygon over a specific street segment or plaza-candidate area on a map. The app queries NYC's live collision data for that exact shape, summarizes the safety case (crash counts, injuries/fatalities, top contributing factors), checks whether the area falls inside a DOT-designated Priority Zone, and uses an LLM to draft a petition letter grounded in that data — supporting an application to DOT's existing Open Streets / Street Pedestrian Plaza program. The user reviews and edits the draft before copying or downloading it; the app never submits anything on the user's behalf.
+## 2. Problem
 
-## 3. Goals & non-goals
+NYC collision and street data are public, but residents must understand several datasets and geospatial queries to answer a local question such as “What crashes were reported around this intersection last year?” Existing raw-data tools do not turn that work into a concise, sourced report that can be understood and shared.
 
-**Goals (MVP, weekend-scoped):**
+## 3. Current implementation slice
 
-- Let a user draw an arbitrary polygon on a NYC map.
-- Query collision data scoped to that polygon and a recent date range, server-side.
-- Surface a clear safety summary: total crashes, injuries, fatalities, top contributing factors, within the drawn area.
-- Check polygon overlap against DOT's Priority Zones dataset and surface that as supporting context.
-- Generate a draft petition letter via an LLM, grounded in the fetched summary — with an explicit human review/edit step before export.
-- Ship a working demo deployed on Vercel.
+The first slice covers one selected official intersection, a fixed 50-meter radius, and calendar year 2025.
 
-**Non-goals (explicitly out of scope for the hackathon submission):**
+### Included
 
-- No user accounts, auth, or saved history across sessions.
-- No direct submission to DOT or any government system — copy/download only.
-- No editing/persisting of past petitions; each session is stateless.
-- No mobile app; responsive web only, desktop-first for the drawing interaction.
-- No support for multiple concurrent AI providers/models — pick one and move on.
-- No moderation/abuse-prevention system beyond basic rate limiting on the AI route (out of scope to build a queueing/anti-abuse system for a weekend demo, but see §7 on cost control).
+- Load official street centerlines for the current map viewport.
+- Make ordinary physical surface-street intersections hoverable and selectable.
+- Show the selected intersection's official names and a visible 50-meter circle.
+- Query Motor Vehicle Collisions - Crashes within the circle and date interval.
+- Compute crash, injury, death, road-user, and contributing-factor metrics deterministically.
+- Check whether the boundary intersects a Vision Zero Priority Area.
+- Show report completeness, limitations, and source provenance.
+- Print or download the same report object displayed on screen.
+- Deploy a working public demo on Vercel.
 
-## 4. Users & use case
+### Not included
 
-Primary user: an NYC resident, community board member, or block association member who has identified a specific unsafe street segment and wants a data-backed starting point for a DOT petition. They are not expected to know GIS, SoQL, or anything about the underlying datasets — the app's job is to translate "this exact shape on the map" into "here's the case, and here's a draft letter."
+- Freehand polygon selection.
+- Street-segment buffer analysis; test later only if the intersection flow is insufficient.
+- Petition or permit generation.
+- User-written observations.
+- Saved reports, accounts, authentication, or a database.
+- Editable PDF output or a finalized government-report format.
+- A custom Street View person.
+- AI calculation, scoring, causation claims, or safety recommendations.
+
+The optional features above must not delay or weaken the map-to-report flow.
+
+## 4. Primary user and outcome
+
+The primary user is a New Yorker who wants credible, location-specific street-safety information without learning GIS or the NYC Open Data API.
+
+The successful outcome is a report that answers:
+
+- Which official intersection and boundary were analyzed?
+- Which complete calendar year was used?
+- How many crashes, injuries, and deaths were reported?
+- How were pedestrians, cyclists, and motorists affected?
+- Which contributing factors were most often recorded?
+- Did the boundary overlap a DOT Vision Zero priority area?
+- Which sources and limitations apply?
 
 ## 5. Core user flow
 
-1. User lands on the app and sees a map centered on NYC (e.g. Manhattan default, or geolocated if permitted).
-2. User selects a draw tool and traces a polygon over the block/corridor/plaza-candidate area they care about.
-3. On completing the shape, the app:
-   - Converts the drawn polygon to WKT (`POLYGON((lon lat, ...))`) — coordinate order is longitude-latitude, opposite of typical draw-library output, so this conversion needs explicit, tested handling.
-   - Queries `Motor Vehicle Collisions - Crashes` (Socrata `h9gi-nx95`) via SoQL `within_polygon`, scoped by a recent date lower bound (e.g. last 5 years) and `location IS NOT NULL`.
-   - Checks the polygon against the `VZV Priority Zones or Areas` dataset (`qzji-nvbd`) for overlap.
-4. The app displays a summary panel: crash count, injury/fatality totals, ranked contributing factors, and a Priority Zone match/no-match indicator.
-5. User clicks "Draft petition." The app sends the summary (not raw AI-facing user input) to an LLM with a prompt template that produces a formal petition letter addressed to DOT, citing the specific data.
-6. The draft renders in an editable text area. User can revise freely, then copy or download it as a PDF (see [ADR 0002](adr/0002-petition-download-format-pdf.md)). No submission action exists in the app.
+1. The app opens on a map focused on the Bryant Park and Grand Central area.
+2. The app loads eligible official centerlines for the visible viewport.
+3. Hovering over an eligible intersection highlights its hit target and shows its official street names.
+4. Clicking selects one intersection and displays its name and 50-meter analysis circle.
+5. The user confirms the selection and requests the report.
+6. The server validates the locked selection, radius, and date interval.
+7. The server queries NYC Open Data and computes the report without AI.
+8. The interface displays the report status, facts, Priority Zone context, limitations, and sources.
+9. The user can change the intersection, retry missing data, or print/download the report.
+10. If implemented, the user may request a separate AI explanation or open Street View without changing the report facts.
 
-## 6. Data sources
+## 6. Frontend interface specification
 
-| Dataset | Socrata ID | Purpose | Access pattern |
+This section is the build contract for the initial frontend. A mockup may support it visually, but this specification takes priority if they conflict.
+
+### 6.1 Layout
+
+- Use a map-first, desktop-first layout.
+- The map occupies the main viewport.
+- A side panel contains guidance, the current selection, report controls, and report content.
+- Keep map attribution visible.
+- On narrow screens, the side panel becomes a bottom sheet or stacked panel without covering the selected intersection permanently.
+- Do not require horizontal scrolling at supported viewport sizes.
+
+### 6.2 Initial state
+
+- Show the product name and one short instruction: select an intersection to create a safety report.
+- Center the demo view on Midtown Manhattan between Bryant Park and Grand Central.
+- Show eligible centerlines and intersection hit targets without overwhelming the basemap.
+- Keep the report action disabled until an intersection is selected.
+
+### 6.3 Hover and selection
+
+- Hovering an eligible intersection changes its visual style and displays the official street names.
+- The pointer cursor and visible focus treatment must indicate that the target is interactive.
+- The interactive target may be larger than its visible marker; the verified spike used a 34-pixel hit target.
+- Clicking or keyboard-activating an intersection selects it.
+- Selection highlights the intersection and contributing streets and draws the 50-meter circle.
+- The side panel shows the official display name, `Calendar year 2025`, and `50 meters (about 164 feet)` before analysis.
+- A clear action lets the user remove or replace the selection.
+- Selecting another intersection replaces the current selection and clears any prior report after confirmation or an unambiguous state transition.
+
+### 6.4 Analysis states
+
+- **Ready:** valid intersection selected; report action enabled.
+- **Loading:** keep the selection and circle visible, disable duplicate requests, and show which data is being retrieved.
+- **Complete:** show the complete report and retrieval time.
+- **Partial:** show `Partial report` next to the report title, identify unavailable sources or fields, keep valid facts, and provide a retry action.
+- **Zero matches:** say `No reported crashes matched this boundary and period`; do not describe the intersection as safe.
+- **Validation error:** explain that the selection could not be analyzed and let the user choose another intersection.
+- **Source failure:** never display a failed request as zero crashes or as no Priority Zone match.
+- **Empty initial state:** do not show empty metric cards before the user requests a report.
+
+Status must use text and an icon or shape in addition to color.
+
+### 6.5 Report hierarchy
+
+Display report information in this order:
+
+1. Report title, `Complete` or `Partial`, intersection, 50-meter boundary, calendar year, and generated time.
+2. Primary totals: crashes, people injured, and people killed.
+3. Road-user breakdown: pedestrians, cyclists, and motorists injured and killed.
+4. Ranked contributing factors and a separate count for `Unspecified`.
+5. Priority Zone result: `Matched`, `Not matched`, or `Unavailable`. Do not display a zone name because dataset `qzji-nvbd` has none.
+6. Data-quality notes and limitations.
+7. NYC Open Data source names, dataset IDs, retrieval status, and links.
+8. Print/download action.
+
+Metric cards with missing values display `Unavailable`, not `0`, `N/A`, or an estimate.
+
+### 6.6 Visual and accessibility direction
+
+- Use a restrained civic-information style with high contrast and dense but readable report content.
+- Reserve the strongest accent for the selected intersection and its boundary.
+- Use consistent tokens for map hover, map selection, complete, partial, warning, and failure states.
+- Do not use red/green color alone to communicate safety or status.
+- All controls require visible labels, keyboard access, focus styles, and usable target sizes.
+- The map needs a non-pointer way to activate a focused intersection.
+- Screen-reader status announcements must cover loading, completion, partial results, errors, and selection changes.
+- Run the repository's Playwright/axe accessibility check for the page.
+
+### 6.7 Optional interface actions
+
+- **Explain this report:** appears after a complete or partial factual report. Its output is labeled `AI explanation` and visually separated from `NYC Open Data facts`.
+- **Street View:** opens visual context without changing the selected boundary or report. Missing imagery must not block the report.
+- These actions remain optional features and may be omitted from the first working slice.
+
+## 7. Analysis and report rules
+
+### Selection
+
+- Selection kind is `intersection`.
+- Names and coordinates come from the official centerline selection, not user-entered location text.
+- The server owns the allowed 50-meter radius.
+- Eligible centerlines are ordinary physical surface streets. Exclude highways, tunnels, ramps, alleys, paths, non-pedestrian records, and nonphysical records.
+- Load centerline geometry by map viewport rather than loading the city at once.
+
+### Period
+
+- Use `2025-01-01` inclusive through `2026-01-01` exclusive.
+- Display `Calendar year 2025`.
+- A later release may offer five-year or year-by-year analysis, but the MVP does not expose a date control.
+
+### Required metrics
+
+- Crashes.
+- People injured and killed.
+- Pedestrians injured and killed.
+- Cyclists injured and killed.
+- Motorists injured and killed.
+- Ranked documented contributing factors.
+- Count of `Unspecified` factors.
+- Priority Zone overlap status.
+
+### Completeness
+
+- `Complete` means every required collision metric was computed and the Priority Zone check completed.
+- `Partial` means the location and boundary are valid but a required source or metric is unavailable.
+- A missing value is `null`, never zero.
+- A successful query with no matching collision rows produces valid zero totals.
+- Missing optional street labels create a limitation note but do not invalidate coordinate-based counts.
+- The UI and download must render one shared report object and must not recalculate metrics independently.
+
+## 8. Data sources
+
+| Dataset | ID | Purpose | Access pattern |
 | --- | --- | --- | --- |
-| Motor Vehicle Collisions - Crashes | `h9gi-nx95` | Core safety data for the drawn polygon | Live SoQL query per request, server-side (Next.js API route), scoped by `within_polygon` + date lower bound |
-| VZV Priority Zones or Areas | `qzji-nvbd` | Legitimacy/context anchor — is this area already a DOT-flagged priority corridor | Fetched once, cached/bundled at build time (5 rows, geometry-only — no borough/name/ID column; see [dataset-priority-zones](knowledge-base/dataset-priority-zones.md) before writing zone-name copy) |
-| Open Streets Locations | `uiay-nctu` | Optional: flag if the drawn area overlaps an existing Open Street, to avoid a redundant petition | Fetched once, cached/bundled at build time; stretch goal, cut first if time-constrained |
+| Motor Vehicle Collisions - Crashes | `h9gi-nx95` | Required report metrics | Server-side `within_circle` query for the selected coordinate, 50-meter radius, and 2025 interval |
+| VZV Priority Zones or Areas | `qzji-nvbd` | Required contextual overlap result | Fetch and cache its five multipolygons; return matched, not matched, or unavailable |
+| NYC Street Centerline | `inkn-q76z` | Selection geometry, official names, nodes, and physical IDs | Load eligible features by viewport and derive intersection candidates |
 
-Gotchas carried over from dataset research (see plan file for full detail): some crash rows have null lat/long (filter them out); register a Socrata `X-App-Token` ahead of demo day to avoid rate-limit surprises; always query server-side and scoped, never fetch-all-then-filter given the dataset's multi-million-row size.
+Never fetch the full collision table and filter it in the browser. A Socrata app token is optional for development but should be added through an ignored environment file if the team provisions one.
 
-## 7. AI usage
+## 9. API contract
 
-- One LLM call per petition draft, triggered explicitly by the user (no background/automatic generation).
-- Input to the model is the structured summary computed server-side (crash counts, top factors, Priority Zone match), not arbitrary free-text injected into a system prompt — reduces prompt-injection surface and keeps output grounded in real numbers.
-- Output is always presented as an editable draft, never auto-copied, auto-downloaded, or auto-submitted — this is the human-in-the-loop story for the "AI Usage & Technology" judging criterion.
-- Use the Vercel AI SDK (per repo stack conventions) for the generation call; pick a single provider/model at scaffold time rather than building multi-provider abstraction — see `vercel:ai-sdk` skill when implementing.
-- Basic guardrail: cap petition generation to a reasonable rate per session/IP to control API cost during the demo period, not a full abuse-prevention system.
-- The prompt template's regulatory grounding (Open Streets typologies, site plan mandates, ADA/EMS/sanitation objections to preempt, applicant eligibility) is static reference content, not computed per-request — see [regulation-open-streets-application](knowledge-base/regulation-open-streets-application.md) before writing the template.
+The planned route is `POST /api/reports/intersection`.
 
-## 8. Design & UX priorities
+The request contains:
 
-Per `docs/judging-criteria.md`, design is scored standalone from functionality — budget real time for this, not just correctness:
+- schema version;
+- locked intersection display name, coordinate, street names, and physical IDs;
+- circle boundary with a 50-meter radius; and
+- calendar-year 2025 start and exclusive end dates.
 
-- The map and draw interaction should feel immediate and obvious (clear draw/undo/clear-shape affordances, visible polygon while drawing).
-- The data summary should read as a "safety case," not a raw data dump — lead with the numbers that matter (injuries, fatalities, top factor), not a table dump of every field.
-- The Priority Zone match should be visually distinct (e.g. a badge/callout), since it's the key originality/legitimacy signal.
-- The petition draft view should clearly separate "AI-generated, please review" from a finished document — don't let it look like a ready-to-send official letter without user action.
+The response contains:
 
-## 9. Success criteria for the hackathon submission
+- report ID, generated time, and `complete` or `partial` status;
+- normalized selection, boundary, and period;
+- nullable deterministic metrics;
+- Priority Zone status;
+- data-quality notes and stable limitations;
+- source names, dataset IDs, roles, retrieval status, times, and query descriptions.
 
-- End-to-end demo works live without visible bugs: draw → summary → priority zone check → AI draft → edit → copy/download.
-- Submission clearly demonstrates novel use of NYC Open Data (polygon-scoped aggregation + cross-dataset Priority Zone check), positioning it for the Best Use of NYC Open Data track.
-- Demo video/presentation calls out the human-in-the-loop design explicitly (per judging criteria).
-- Deployed and reachable via a public Vercel URL before the Sunday 2:00 PM ET submission deadline.
+Reject invalid coordinates, unsupported radii, unsupported periods, unknown selection kinds, and raw SoQL from the browser. ADR 0003 defines the boundary decision, and ADR 0005 defines deterministic reporting and bounded AI.
 
-## 10. Open questions / risks
+## 10. Optional AI explanation
 
-- **Map + draw library choice** — Mapbox GL Draw vs. Leaflet.draw vs. a lighter alternative; affects bundle size, styling control, and how much of the "Learning" story leans on this piece. Decide at scaffold time.
-- **LLM provider/model choice** — not yet selected; decide during `scaffold-nextjs-app` per `vercel:ai-sdk` guidance.
-- **Time budget for Open Streets overlap check (§6, stretch)** — first thing to cut if the weekend runs short; Priority Zone check is the higher-value dataset to keep.
-- **Socrata app token provisioning** — needs to happen early (5-minute task) so it isn't a demo-day surprise; track as a scaffold-time setup step, not a code task.
+The factual report does not depend on AI. If the team implements `Explain this report`:
+
+- The action is explicitly triggered by the user.
+- The model receives only the structured report object.
+- The output briefly explains the strongest findings, period, 50-meter boundary, and limitations in plain language.
+- The output cannot calculate or modify values, claim causation, call a place safe or unsafe, or hide a `Partial` status.
+- The UI labels it `AI explanation` and keeps the factual report visible.
+- If generation fails, the report remains usable and the explanation shows as unavailable.
+
+The model/provider, environment-variable name, and access test remain implementation decisions. Do not build a multi-provider abstraction for the hackathon.
+
+## 11. Print and download
+
+- The initial export is a generic print-friendly report.
+- The exported values and statuses must exactly match the displayed report object.
+- The document includes the location, boundary, period, generation time, metrics, limitations, and sources.
+- The exact civic-report format and editable export are deferred.
+- ADR 0002 records the former petition-PDF decision and is superseded for the current product direction.
+
+## 12. Acceptance cases
+
+### Ordinary intersection
+
+For `W 40 ST at 5 AVE`, 50 meters, calendar year 2025, the verified spike returned:
+
+- 6 crashes;
+- 7 people injured and 1 killed;
+- 4 pedestrians injured and 1 killed;
+- 1 cyclist injured and none killed; and
+- 2 motorists injured and none killed.
+
+### Complex intersection and missing labels
+
+For `E 42 ST at PARK AVE`, 50 meters, calendar year 2025, the verified spike returned:
+
+- 9 crashes;
+- 4 people injured and none killed;
+- 2 pedestrians injured;
+- 2 cyclists injured; and
+- 3 of 9 rows missing `on_street_name`.
+
+The counts remain valid because all matched rows had coordinates. The interface must disclose the missing labels.
+
+### Recovery cases
+
+- Collision source timeout: collision values are unavailable, report is partial, and retry is visible.
+- Priority Zone source timeout: collision facts remain visible, Priority Zone is unavailable, and report is partial.
+- Successful zero-row query: all additive metrics are zero and the interface uses the required zero-match wording.
+- Invalid coordinate or radius: return an HTTP 400 validation error and do not create a report.
+
+## 13. Minimum validation
+
+- Unit tests for aggregation, factor ranking, and completeness rules.
+- Contract tests for validation and nullable response fields.
+- Adapter fixtures for success, zero rows, malformed numeric values, missing labels, timeout, rate limit, and invalid JSON.
+- A spatial test that catches swapped coordinate order or radius units.
+- UI smoke test: select intersection, see boundary, generate report, inspect sources, and print/download matching values.
+- Failure smoke test: unavailable source produces a visible partial label and retry.
+- Keyboard and Playwright/axe checks for the primary page.
+- Before handoff: lint, typecheck, unit tests, production build, and a manual browser check.
+
+## 14. Success criteria
+
+- The public demo completes intersection selection through sourced report without visible failure.
+- The first 30 seconds show the official intersection, 50-meter boundary, and real NYC Open Data result.
+- The submission explains that software computes the facts deterministically.
+- Missing data produces a clear partial report instead of invented or misleading values.
+- The NYC Open Data sources and dataset IDs are visible.
+- The optional AI role, if shown, is clearly bounded and separate from the facts.
+- A screenshot or recording can demonstrate the flow if the basemap or an external service fails during judging.
+
+## 15. Open implementation decisions and safe deferrals
+
+- Team ownership for map, data/report service, report UI, and optional AI work.
+- Model provider and access verification for the optional explanation.
+- Complex Grand Central naming fallback beyond the ordinary-intersection demo fixture.
+- Socrata app-token provisioning.
+- Final report visual format.
+- Street View, custom person, petition, permit, user observations, street-line buffer, saved reports, and editable export.

@@ -1,17 +1,49 @@
 ---
 type: framework
-status: candidate
-source: general knowledge, not yet hands-on validated in this repo
+status: adopted
+source: hands-on temporary spike and provider documentation, 2026-08-15
 ---
 
-# Map + draw library options
+# Map renderer: MapLibre GL JS with OpenFreeMap
 
-Not yet deeply researched against this repo's Next.js/Vercel stack — decide at `scaffold-nextjs-app` time. Options considered:
+The MVP does not use a freehand drawing library. It uses MapLibre GL JS to render official centerlines, accessible intersection hit targets, hover and selected states, and the 50-meter analysis circle.
 
-- **Mapbox GL Draw** (`@mapbox/mapbox-gl-draw` on top of `mapbox-gl` / `react-map-gl`) — polished polygon-draw UX out of the box, vector tiles render fast. Requires a Mapbox API key/token (free tier should cover a hackathon demo) and adds real bundle weight.
-- **Leaflet.draw** (on top of `react-leaflet`) — lighter weight, no API key required for the base map (can use OSM tiles), draw plugin is older/less actively maintained but functional.
-- **Turf.js** — not a map/draw library itself, but needed either way for polygon → WKT conversion and any client-side geometry helpers (e.g. area/overlap checks before hitting the API).
+## Accepted configuration
 
-Open question to resolve at scaffold time: does the team want the visual polish of Mapbox (better for the "Design" judging criterion) or the zero-API-key simplicity of Leaflet (less setup risk during a time-boxed weekend)? Leaning Mapbox GL Draw for the design payoff, but confirm no API-key friction before committing.
+- Renderer: MapLibre GL JS.
+- Hackathon basemap: OpenFreeMap Bright.
+- Selection: application-owned centerline and intersection layers.
+- Data loading: eligible centerlines by map viewport.
+- Attribution: keep MapLibre's attribution control visible.
+- Service fallback: retain screenshots or a recording because the public basemap has no service-level agreement.
 
-Used by: [PRD §10 open questions](../prd.md#10-open-questions--risks).
+## Verified spike
+
+A temporary page used MapLibre GL JS 5.24.0 and OpenFreeMap Bright with an official W 40 ST/5 AVE point.
+
+- The map and centerline overlay rendered.
+- A 34-pixel interactive target supported an unobtrusive visible marker.
+- Hover produced `Hover: W 40 ST at 5 AVE`.
+- Click produced `Selected: W 40 ST at 5 AVE`.
+- The temporary page and server were removed; no repository application code changed.
+
+## Layer pattern
+
+Use separate layers for:
+
+- eligible centerlines;
+- wide transparent or low-opacity hit targets;
+- hover state;
+- selected contributing streets;
+- intersection targets; and
+- the selected 50-meter boundary.
+
+Do not rely on color alone. Provide keyboard focus and activation through an accessible companion control or equivalent map interaction.
+
+## Rejected or deferred options
+
+- Mapbox GL Draw and Leaflet.draw are unnecessary because polygons are out of MVP scope.
+- A custom draggable Street View person is optional after the core report works.
+- Native Street View Pegman is optional context and must not control the report boundary.
+
+Used by: [PRD §6](../prd.md#6-frontend-interface-specification) and [ADR 0004](../adr/0004-maplibre-openfreemap.md).
