@@ -38,7 +38,7 @@ docs/infra.md                               Phase 0's env var / Vercel doc
 
 Small pre-work so nothing downstream builds on the old petition-era pitch or hits an undocumented env var gap.
 
-- [ ] **0.1 — Replace stale petition-pitch copy with the safety-report pitch**
+- [x] **0.1 — Replace stale petition-pitch copy with the safety-report pitch**
 
   ```text
   [SPEC]
@@ -54,7 +54,7 @@ Small pre-work so nothing downstream builds on the old petition-era pitch or hit
   1. Accuracy of product description > minimizing diff size.
   ```
 
-- [ ] **0.2 — Fix stale layout metadata**
+- [x] **0.2 — Fix stale layout metadata**
 
   ```text
   [SPEC]
@@ -70,7 +70,7 @@ Small pre-work so nothing downstream builds on the old petition-era pitch or hit
   1. Consistency with Step 0.1 copy > independent wording.
   ```
 
-- [ ] **0.3 — Document Vercel project link + Socrata app-token env var strategy**
+- [x] **0.3 — Document Vercel project link + Socrata app-token env var strategy**
 
   ```text
   [SPEC]
