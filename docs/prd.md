@@ -192,25 +192,9 @@ Never fetch the full collision table and filter it in the browser. A Socrata app
 
 ## 9. API contract
 
-The planned route is `POST /api/reports/intersection`.
+The canonical, field-level request, success, and error contract is [`docs/contract.md`](./contract.md). It freezes the implemented TypeScript schema, `POST /api/reports/intersection`, server-authoritative scope, null-versus-zero semantics, degraded-source behavior, error-to-panel mapping, and deterministic authority boundary.
 
-The request contains:
-
-- schema version;
-- locked intersection display name, coordinate, street names, and physical IDs;
-- circle boundary with a 50-meter radius; and
-- calendar-year 2025 start and exclusive end dates.
-
-The response contains:
-
-- report ID, generated time, and `complete` or `partial` status;
-- normalized selection, boundary, and period;
-- nullable deterministic metrics;
-- Priority Zone status;
-- data-quality notes and stable limitations;
-- source names, dataset IDs, roles, retrieval status, times, and query descriptions.
-
-Reject invalid coordinates, unsupported radii, unsupported periods, unknown selection kinds, and raw SoQL from the browser. ADR 0003 defines the boundary decision, and ADR 0005 defines deterministic reporting and bounded AI.
+This PRD retains the product intent. `docs/contract.md` and `src/types/report.ts` are authoritative for exact paths, literals, required fields, nullability, enums, and error codes. ADR 0003 remains authoritative for intersection validation and the 50-meter boundary; ADR 0005 remains authoritative for deterministic reporting and bounded AI.
 
 ## 10. Optional AI explanation
 
@@ -287,7 +271,6 @@ The counts remain valid because all matched rows had coordinates. The interface 
 
 ## 15. Open implementation decisions and safe deferrals
 
-- Team ownership for map, data/report service, report UI, and optional AI work.
 - Model provider and access verification for the optional explanation.
 - Complex Grand Central naming fallback beyond the ordinary-intersection demo fixture.
 - Socrata app-token provisioning.
