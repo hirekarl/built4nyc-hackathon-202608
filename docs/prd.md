@@ -1,4 +1,4 @@
-# Product Requirements Document: Vision Zero Sandbox
+# Product Requirements Document: EZStreet
 
 Status: draft, pre-scaffold. Idea evaluated and approved against the judging rubric — see `.claude/plans/rayan-proposed-the-following-validated-backus.md` for that evaluation (local, not checked in). This PRD is the source of truth for scope going into `scaffold-nextjs-app`.
 
@@ -8,7 +8,7 @@ New Yorkers who witness dangerous conditions on a specific block or corridor —
 
 ## 2. Solution
 
-Vision Zero Sandbox is a web app where a user draws a polygon over a specific street segment or plaza-candidate area on a map. The app queries NYC's live collision data for that exact shape, summarizes the safety case (crash counts, injuries/fatalities, top contributing factors), checks whether the area falls inside a DOT-designated Priority Zone, and uses an LLM to draft a petition letter grounded in that data — supporting an application to DOT's existing Open Streets / Street Pedestrian Plaza program. The user reviews and edits the draft before copying or downloading it; the app never submits anything on the user's behalf.
+EZStreet is a web app where a user draws a polygon over a specific street segment or plaza-candidate area on a map. The app queries NYC's live collision data for that exact shape, summarizes the safety case (crash counts, injuries/fatalities, top contributing factors), checks whether the area falls inside a DOT-designated Priority Zone, and uses an LLM to draft a petition letter grounded in that data — supporting an application to DOT's existing Open Streets / Street Pedestrian Plaza program. The user reviews and edits the draft before copying or downloading it; the app never submits anything on the user's behalf.
 
 ## 3. Goals & non-goals
 

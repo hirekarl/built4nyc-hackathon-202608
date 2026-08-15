@@ -6,7 +6,7 @@ describe("Home", () => {
   it("renders the app name as the main heading", () => {
     render(<Home />);
     expect(
-      screen.getByRole("heading", { level: 1, name: "Vision Zero Sandbox" }),
+      screen.getByRole("heading", { level: 1, name: "EZStreet" }),
     ).toBeInTheDocument();
   });
 

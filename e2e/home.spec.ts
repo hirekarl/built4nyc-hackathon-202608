@@ -6,9 +6,7 @@ test("home page renders and has no detectable accessibility violations", async (
 }) => {
   await page.goto("/");
 
-  await expect(
-    page.getByRole("heading", { name: "Vision Zero Sandbox" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "EZStreet" })).toBeVisible();
 
   const accessibilityScanResults = await new AxeBuilder({ page }).analyze();
 

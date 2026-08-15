@@ -11,7 +11,7 @@ Source material extracted from `Built for NYC AI Hackathon 20260815-16.pdf` (the
 
 Project docs (not sourced from the event packet):
 
-- [PRD](./prd.md) — product requirements for the chosen project, Vision Zero Sandbox
+- [PRD](./prd.md) — product requirements for the chosen project, EZStreet
 - [Knowledge Base](./knowledge-base/README.md) — dataset/framework/regulation research findings
 - [ADRs](./adr/README.md) — architecture decision records
 

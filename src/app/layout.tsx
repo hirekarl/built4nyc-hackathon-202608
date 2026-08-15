@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Vision Zero Sandbox",
+  title: "EZStreet",
   description:
     "Draw a street segment, see the crash data behind it, and draft a DOT petition backed by NYC Open Data.",
 };
