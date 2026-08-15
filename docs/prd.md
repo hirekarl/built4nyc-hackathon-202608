@@ -44,7 +44,7 @@ Primary user: an NYC resident, community board member, or block association memb
    - Checks the polygon against the `VZV Priority Zones or Areas` dataset (`qzji-nvbd`) for overlap.
 4. The app displays a summary panel: crash count, injury/fatality totals, ranked contributing factors, and a Priority Zone match/no-match indicator.
 5. User clicks "Draft petition." The app sends the summary (not raw AI-facing user input) to an LLM with a prompt template that produces a formal petition letter addressed to DOT, citing the specific data.
-6. The draft renders in an editable text area. User can revise freely, then copy or download it as text/markdown. No submission action exists in the app.
+6. The draft renders in an editable text area. User can revise freely, then copy or download it as a PDF (see [ADR 0002](adr/0002-petition-download-format-pdf.md)). No submission action exists in the app.
 
 ## 6. Data sources
 
