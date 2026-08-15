@@ -25,6 +25,12 @@ Using generative AI and "vibe coding," build a **web app** that meets a challeng
 - Once scaffolding is needed, use the `scaffold-nextjs-app` skill, which also wires up the engineering standards below (hooks, lint/format config, test setup).
 - Before submitting, run the `devpost-submission-checklist` skill.
 
+## Git workflow
+
+- **Feature branches + PRs only — never commit directly to `main`.** Branch from `main`, open a PR, merge via GitHub.
+- **Rebase is the merge strategy**, enforced at the GitHub repo level (squash and merge-commit are disabled). Keep feature branches rebased on `main` before merging to avoid conflicts at merge time.
+- Branches are auto-deleted on merge.
+
 ## Engineering standards
 
 - **TDD, ≥90% test coverage.** Write the failing test before the implementation. Coverage is enforced in CI/pre-commit — treat a coverage drop below 90% as a build failure, not a warning.
