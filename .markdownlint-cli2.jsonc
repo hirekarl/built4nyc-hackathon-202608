@@ -2,8 +2,14 @@
   // MD013 (line-length) is disabled because prose is intentionally kept on a single
   // unwrapped line per paragraph (see .prettierrc.json proseWrap: "never") rather than
   // hard-wrapped at a column width.
+  //
+  // MD060 (table-column-style) is disabled because Prettier pads short table cells out
+  // to a 3-character minimum width, which doesn't match any single MD060 style exactly
+  // (e.g. empty cells get two spaces, not one) — Prettier's table formatting is the
+  // source of truth here, not this rule.
   "config": {
-    "MD013": false
+    "MD013": false,
+    "MD060": false
   },
   "globs": ["**/*.md"],
   "ignores": ["node_modules", "docs/private"]
