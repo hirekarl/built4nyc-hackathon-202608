@@ -27,7 +27,7 @@ If a required source or metric is unavailable, EZStreet labels the result **Part
 | VZV Priority Zones or Areas | `qzji-nvbd` | Priority-area overlap context; the dataset has no zone name or ID |
 | NYC Street Centerline | `inkn-q76z` | Selectable street geometry, official names, nodes, and physical IDs |
 
-The MVP targets the **Best Use of NYC Open Data** track alongside the General category. See [`docs/prd.md`](./docs/prd.md) for the product and frontend requirements, [`docs/adr/`](./docs/adr/README.md) for accepted decisions, and [`docs/knowledge-base/`](./docs/knowledge-base/README.md) for dataset and framework evidence.
+The MVP targets the **Best Use of NYC Open Data** track alongside the General category. See [`docs/prd.md`](./docs/prd.md) for the product and frontend requirements, [`docs/adr/`](./docs/adr/README.md) for accepted decisions, [`docs/knowledge-base/`](./docs/knowledge-base/README.md) for dataset and framework evidence, and [`docs/plans/ezstreet-implementation-plan.md`](./docs/plans/ezstreet-implementation-plan.md) for the step-by-step build plan.
 
 ## Optional features after the core flow
 
@@ -41,7 +41,7 @@ Next.js 16 (App Router), React 19, Tailwind CSS v4, MapLibre GL JS, and OpenFree
 
 ## Status
 
-The app is scaffolded but still shows a placeholder page. The map, report API, report UI, download, Priority Zone check, and optional AI explanation are not implemented yet.
+The app is scaffolded but still shows a placeholder page. The map, report API, report UI, download, Priority Zone check, and optional AI explanation are not implemented yet. See [`docs/plans/ezstreet-implementation-plan.md`](./docs/plans/ezstreet-implementation-plan.md) for the phased build plan and current checklist.
 
 ## Workflow
 

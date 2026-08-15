@@ -14,5 +14,6 @@ Project docs (not sourced from the event packet):
 - [PRD](./prd.md) — product requirements and concrete frontend interface specification for EZStreet
 - [Knowledge Base](./knowledge-base/README.md) — dataset/framework/regulation research findings
 - [ADRs](./adr/README.md) — architecture decision records
+- [Implementation Plan](./plans/ezstreet-implementation-plan.md) — phased, TDD-ready build plan (frontend → backend → integration) with pre-written `[SPEC]`/`[FORCES]` blocks per step
 
 Note: The PDF also contains a signed adult Consent/Release form (Form 3) with a participant's personal signature and phone number. That page was intentionally omitted from these docs since it's a private, personally identifiable document rather than public event content.
