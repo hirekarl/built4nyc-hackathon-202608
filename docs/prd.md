@@ -63,6 +63,7 @@ Gotchas carried over from dataset research (see plan file for full detail): some
 - Output is always presented as an editable draft, never auto-copied, auto-downloaded, or auto-submitted — this is the human-in-the-loop story for the "AI Usage & Technology" judging criterion.
 - Use the Vercel AI SDK (per repo stack conventions) for the generation call; pick a single provider/model at scaffold time rather than building multi-provider abstraction — see `vercel:ai-sdk` skill when implementing.
 - Basic guardrail: cap petition generation to a reasonable rate per session/IP to control API cost during the demo period, not a full abuse-prevention system.
+- The prompt template's regulatory grounding (Open Streets typologies, site plan mandates, ADA/EMS/sanitation objections to preempt, applicant eligibility) is static reference content, not computed per-request — see [regulation-open-streets-application](knowledge-base/regulation-open-streets-application.md) before writing the template.
 
 ## 8. Design & UX priorities
 
