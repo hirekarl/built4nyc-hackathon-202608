@@ -2,23 +2,54 @@
   "name": "built4nyc-hackathon-202608",
   "private": true,
   "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
     "lint:md": "markdownlint-cli2 \"**/*.md\"",
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,mjs,cjs,json,css}\"",
+    "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,mjs,cjs,json,css}\"",
     "format:md": "prettier --write \"**/*.md\"",
     "format:md:check": "prettier --check \"**/*.md\"",
+    "test": "vitest run --coverage",
+    "test:watch": "vitest",
     "prepare": "husky"
   },
   "lint-staged": {
     "*.md": [
       "markdownlint-cli2",
       "prettier --write"
+    ],
+    "*.{js,jsx,ts,tsx,mjs,cjs,json,css}": [
+      "eslint --fix",
+      "prettier --write"
     ]
+  },
+  "dependencies": {
+    "next": "16.3.1",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.2",
     "@commitlint/config-conventional": "^21.2.2",
+    "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^4.3.4",
+    "@vitest/coverage-v8": "^2.1.8",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.1",
     "husky": "^9.1.7",
+    "jsdom": "^25.0.1",
     "lint-staged": "^17.3.0",
     "markdownlint-cli2": "^0.14.0",
-    "prettier": "^3.3.3"
+    "prettier": "^3.3.3",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^2.1.8"
   }
 }
