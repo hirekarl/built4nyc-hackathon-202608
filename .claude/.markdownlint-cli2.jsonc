@@ -1,0 +1,7 @@
+{
+  // Agent/skill instruction files start with YAML frontmatter followed by prose, not an H1 —
+  // MD041 doesn't apply here.
+  "config": {
+    "MD041": false
+  }
+}

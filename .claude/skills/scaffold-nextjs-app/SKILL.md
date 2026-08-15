@@ -1,0 +1,17 @@
+---
+name: scaffold-nextjs-app
+description: Scaffold the Next.js app for this hackathon repo, deploy it to Vercel, and wire up the project's engineering standards (TDD test setup with coverage gate, Husky pre-commit hooks, GitHub Actions CI). Use once a project idea is committed and it's time to start building.
+---
+
+Scaffold the hackathon's Next.js app in this repo root and get it deployable and test-ready in one pass. Sequence:
+
+1. **Scaffold Next.js.** Use `create-next-app` (App Router, TypeScript) in the repo root. Don't hand-roll config that the scaffolder already provides.
+2. **Link + deploy to Vercel.** Use the `vercel:bootstrap` and `vercel:deploy` skills for this — don't duplicate their steps here, just invoke them.
+3. **Test setup for TDD, ≥90% coverage.** Install a test runner (Vitest is the default choice for a Next.js/TS app; Jest is fine if the user prefers it) with a coverage reporter, and set the coverage threshold to 90% in its config (e.g. `coverage.thresholds` in `vitest.config.ts`) so a coverage drop fails the run, not just reports it. Write one real test alongside the first real component to prove the loop works — don't leave a placeholder test.
+4. **LF line endings.** Confirm `.gitattributes` (already at repo root: `* text=auto eol=lf`) is respected — if any already-tracked files have CRLF, renormalize with `git add --renormalize .`.
+5. **Lint + format.** Set up ESLint (Next.js's default config) and Prettier, with a `format` and `lint` script in `package.json`. The root already has `.prettierrc.json`/`.prettierignore` and Markdown-specific `lint:md`/`format:md` scripts (markdownlint-cli2 + Prettier) from before the app existed — reuse that same `.prettierrc.json` for app code rather than creating a second config, and merge the app's `lint`/`format` scripts alongside the existing `lint:md`/`format:md` ones instead of replacing them.
+6. **Pre-commit hooks.** Install Husky + lint-staged. Configure lint-staged to run lint + format on staged files (JS/TS _and_ Markdown — include `lint:md`/`format:md` in the lint-staged config, not just the app's own linters), and a `pre-commit` hook that also runs the full test suite with the coverage gate. Keep the hook fast enough to not be painful during a weekend hackathon — if the suite grows slow, scope the pre-commit run to affected tests and rely on CI as the full gate.
+7. **GitHub Actions CI.** Add `.github/workflows/ci.yml` running on push/PR: install deps, lint (app + `lint:md`), format check (app + `format:md:check`), and test with coverage (failing the job if coverage is below 90%). Mirror what the pre-commit hook checks so local and CI gates stay consistent.
+8. **Architecture note.** When creating the first non-trivial modules (e.g. the Open Data client from `nyc-open-data-scout`), keep them behind small interfaces per SOLID — e.g. a data-fetching module the UI depends on via an abstraction, not a component calling `fetch` directly against a third-party API. Don't over-engineer beyond what the app's actual shape needs.
+
+End state: `npm test` (or `pnpm test`) runs the suite with coverage enforced, a commit triggers lint/format/test via Husky, GitHub Actions runs the same checks on push, and the app is live on a Vercel preview URL.
