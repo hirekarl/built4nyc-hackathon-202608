@@ -10,7 +10,7 @@ source: verified against live Socrata API (metadata + full-table aggregates), 20
 - **SODA endpoint:** `https://data.cityofnewyork.us/resource/h9gi-nx95.json`
 - **Portal page:** <https://data.cityofnewyork.us/Public-Safety/Motor-Vehicle-Collisions-Crashes/h9gi-nx95>
 - **Row count (verified via `$select=count(*)`):** 2,269,187.
-- **Coverage (verified via `min/max(crash_date)`):** 2012-07-01 to 2026-06-11, updated daily.
+- **Coverage (verified via `min/max(crash_date)`):** 2012-07-01 to 2026-06-11. Portal metadata states the dataset is updated daily, but the verified max `crash_date` is ~2 months behind the verification date (2026-08-15) — likely NYPD reporting lag, not a stale feed. Don't assume same-day or same-week crash rows will be present.
 
 ## Full column list (verified via `/api/views/h9gi-nx95.json`)
 
