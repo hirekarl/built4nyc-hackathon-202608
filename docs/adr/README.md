@@ -5,6 +5,7 @@ Short records of significant, hard-to-reverse technical decisions for this proje
 ## Index
 
 - [0001 - Record architecture decisions](./0001-record-architecture-decisions.md)
+- [0002 - Petition download format is PDF](./0002-petition-download-format-pdf.md)
 
 ## Process
 
