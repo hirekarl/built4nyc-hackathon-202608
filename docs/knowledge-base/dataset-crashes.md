@@ -65,16 +65,16 @@ GET https://data.cityofnewyork.us/resource/h9gi-nx95.json
 Live queries on August 15, 2026 returned:
 
 | Intersection | Radius | Crashes | Injured | Killed | Data-quality note |
-| --- | ---: | ---: | ---: | ---: | --- |
+| --- | --: | --: | --: | --: | --- |
 | W 40 ST at 5 AVE | 50 m | 6 | 7 | 1 | ordinary naming fixture |
 | E 42 ST at PARK AVE | 50 m | 9 | 4 | 0 | 3 rows missing `on_street_name` |
 
 Radius sensitivity confirmed why the server must own the boundary:
 
-| Intersection | 25 m | 50 m | 75 m | 100 m |
-| --- | ---: | ---: | ---: | ---: |
-| W 40 ST at 5 AVE | 6 | 6 | 6 | 18 |
-| E 42 ST at PARK AVE | 6 | 9 | 12 | 15 |
+| Intersection        | 25 m | 50 m | 75 m | 100 m |
+| ------------------- | ---: | ---: | ---: | ----: |
+| W 40 ST at 5 AVE    |    6 |    6 |    6 |    18 |
+| E 42 ST at PARK AVE |    6 |    9 |   12 |    15 |
 
 The 100-meter Bryant Park jump begins absorbing nearby blocks. The accepted MVP radius is 50 meters.
 
