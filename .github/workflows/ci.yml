@@ -16,6 +16,7 @@ jobs:
           node-version: 22
           cache: npm
 
+      - run: npm install -g npm@latest
       - run: npm ci
 
       - name: Lint
