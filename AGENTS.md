@@ -1,4 +1,6 @@
-# Built for NYC: AI Hackathon — Project Repo
+# Built for NYC: AI Hackathon — Project Repo (Codex CLI edition)
+
+This file is the Codex-CLI-facing twin of `CLAUDE.md`. Both must stay in sync — a substantive change to one repo rule belongs in both files. Codex CLI reads `AGENTS.md` automatically at session start; it does not read `CLAUDE.md`, `.claude/agents/*.md`, or `.claude/skills/*/SKILL.md` — those are Claude Code's own discovery paths.
 
 This repo is the entry for the **Built for NYC: AI Hackathon**, presented by The New York Public Library (NYPL) and Major League Hacking (MLH), Aug 15–16, 2026, at the Stavros Niarchos Foundation Library (SNFL). Full source docs are in `docs/` (see `docs/README.md` for the index).
 
@@ -16,17 +18,17 @@ Using generative AI and "vibe coding," build a **web app** that meets a challeng
 ## Target tracks
 
 - **General category** (default, all entrants).
-- **Best Use of NYC Open Data** — must use a dataset from [opendata.cityofnewyork.us](https://opendata.cityofnewyork.us/) in a novel way. Use the `nyc-open-data-scout` agent to find and wire up a relevant dataset.
+- **Best Use of NYC Open Data** — must use a dataset from [opendata.cityofnewyork.us](https://opendata.cityofnewyork.us/) in a novel way.
 
 ## Stack & workflow
 
-- **Next.js (App Router)**, deployed on **Vercel**. Use the `vercel:*` skills already available in this environment (`vercel:bootstrap`, `vercel:deploy`, `vercel:nextjs`, `vercel:vercel-storage`, etc.) for anything Vercel/Next.js-specific — don't re-derive that guidance here.
+- **Next.js (App Router)**, deployed on **Vercel**. Codex has no bundled Vercel-specific plugin skills (Claude Code's `vercel:*` skills are Claude-only) — use the `vercel` CLI directly for linking/deploying, and the `vercel` MCP server (configured in `.codex/config.toml`, see below) for deployment status, build logs, and project info once it's authorized.
 - **Project direction is locked in and scaffolded**: EZStreet. `docs/prd.md` is the product and frontend source of truth, `docs/knowledge-base/` holds dataset/framework evidence, and `docs/adr/` holds accepted architecture decisions.
-- **Build plan**: `docs/plans/ezstreet-implementation-plan.md` is the step-by-step, TDD-ready implementation plan (frontend → backend → integration, per [issue #21](https://github.com/hirekarl/ezstreet/issues/21)'s ownership split) — every checklist item there is a pre-written `[SPEC]`/`[SPIKE]` + `[FORCES]` block ready to relay to `sdet`/`builder`.
-- **Not yet linked to a Vercel project locally** (no `.vercel/` in this checkout) — run `vercel:bootstrap` when ready to deploy; check with the team first in case a project already exists on Vercel.
+- **Build plan**: `docs/plans/ezstreet-implementation-plan.md` is the step-by-step, TDD-ready implementation plan (frontend → backend → integration, per [issue #21](https://github.com/hirekarl/ezstreet/issues/21)'s ownership split) — every checklist item there is a pre-written `[SPEC]`/`[SPIKE]` + `[FORCES]` block ready to relay to the `sdet`/`builder` subagents.
+- **Not yet linked to a Vercel project locally** (no `.vercel/` in this checkout) — run `vercel link` when ready to deploy; check with the team first in case a project already exists on Vercel.
 - **Accepted core decisions**: select official intersections with a 50-meter boundary (ADR-0003), use MapLibre GL JS with OpenFreeMap Bright (ADR-0004), and generate the sourced safety report deterministically (ADR-0005). The official NYC Street Centerline SODA dataset is `inkn-q76z`.
 - **Optional AI setup remains open**: the model/provider and access test for `Explain this report` are team implementation decisions. AI work must not block the deterministic map-to-report slice.
-- Before submitting, run the `devpost-submission-checklist` skill.
+- Before submitting, run through the `devpost-submission-checklist` skill (`.agents/skills/devpost-submission-checklist/`).
 
 ## Commands
 
@@ -48,33 +50,33 @@ Using generative AI and "vibe coding," build a **web app** that meets a challeng
 - **Accessibility is tested, not assumed.** `e2e/home.spec.ts` runs an `@axe-core/playwright` scan against the rendered page (`npm run test:e2e`) — any new page/route should get the same scan added, not just a manual visual check. This is the automated backstop for the Design/accessibility judging criterion above.
 - **Node ≥22, npm ≥12 — pinned via `.nvmrc` and `package.json` `engines`.** An older npm (e.g. the 10.9.x some Node 22 installs bundle by default) silently drops `libc` metadata from `package-lock.json` and reintroduces lockfile drift. If you ever regenerate the lockfile, check `npm -v` first (`npm install -g npm@latest` if it's below 12).
 - **LF line endings everywhere**, enforced via `.gitattributes` (`* text=auto eol=lf`) — don't bypass it.
-- **Pre-commit hooks** (Husky, already installed) currently run lint-staged on `*.md` (`markdownlint-cli2` + `prettier --write`); `scaffold-nextjs-app` extends the same `lint-staged` config with the app's own lint/format, plus the full test suite before every commit. Don't commit with `--no-verify`; if a hook fails, fix the underlying issue.
+- **Pre-commit hooks** (Husky, already installed) currently run lint-staged on `*.md` (`markdownlint-cli2` + `prettier --write`) plus the app's own lint/format, plus the full test suite before every commit. Don't commit with `--no-verify`; if a hook fails, fix the underlying issue.
 - **Conventional Commits, enforced at commit time.** `.husky/commit-msg` runs `commitlint` (`commitlint.config.cjs`, extends `@commitlint/config-conventional`) — non-conventional commit messages (e.g. missing a `type:` prefix) are rejected.
-- **No AI `Co-Authored-By` trailers.** The same `commit-msg` hook rejects any `Co-Authored-By:` trailer that names an AI tool (Claude, Anthropic, OpenAI, ChatGPT, GPT-, Copilot, Gemini, Codex, or the word "AI"). When Claude Code commits in this repo, it must not add its usual `Co-Authored-By: Claude ... <noreply@anthropic.com>` trailer — the hook will block it.
-- **CI via GitHub Actions** (`.github/workflows/ci.yml`, set up by `scaffold-nextjs-app`) re-runs lint, format check, tests, and the ≥90% coverage gate on every push/PR — the pre-commit hook is a fast local gate, CI is the authoritative one. Keep them checking the same things.
+- **No AI `Co-Authored-By` trailers.** The same `commit-msg` hook rejects any `Co-Authored-By:` trailer that names an AI tool (Claude, Anthropic, OpenAI, ChatGPT, GPT-, Copilot, Gemini, Codex, or the word "AI"). When Codex commits in this repo, it must not add a `Co-Authored-By:` trailer naming itself or any AI tool — the hook will block it.
+- **CI via GitHub Actions** (`.github/workflows/ci.yml`) re-runs lint, format check, tests, and the ≥90% coverage gate on every push/PR — the pre-commit hook is a fast local gate, CI is the authoritative one. Keep them checking the same things.
 - **SOLID + established design patterns** when architecting non-trivial modules — favor small, single-responsibility components/functions, dependency inversion at integration boundaries (e.g. the Open Data client behind an interface, not fetch calls scattered through components), and named patterns (factory, strategy, adapter, etc.) where they clarify intent. Don't apply patterns ceremonially to trivial code — a weekend hackathon app still favors the simplest thing that satisfies SOLID, not maximal abstraction.
-- **Markdown lint + format** (repo root already set up, works today — no app scaffold needed): `npm run lint:md` (markdownlint-cli2, config at `.markdownlint-cli2.jsonc`, with an `MD041` override in `.claude/.markdownlint-cli2.jsonc` for frontmatter-led agent/skill files) and `npm run format:md` (Prettier, `.prettierrc.json` sets `proseWrap: "never"` so paragraphs stay on one unwrapped line instead of hard-wrapping — GFM tables are supported natively and get column-aligned on format). Both are wired into pre-commit/CI alongside the app's own lint/format/test once `scaffold-nextjs-app` runs.
+- **Markdown lint + format**: `npm run lint:md` (markdownlint-cli2, config at `.markdownlint-cli2.jsonc`) and `npm run format:md` (Prettier, `.prettierrc.json` sets `proseWrap: "never"` so paragraphs stay on one unwrapped line instead of hard-wrapping — GFM tables are supported natively and get column-aligned on format). Both are wired into pre-commit/CI alongside the app's own lint/format/test.
 
 ## Multi-agent build workflow
 
-This is a **team project** — anyone on the team can dispatch these agents, so the handoff protocol below is the shared contract, not one person's convention. The idea (EZStreet — `docs/prd.md`), core architecture (`docs/adr/`), and verified Open Data rules (`docs/knowledge-base/`) are locked in. `docs/plans/ezstreet-implementation-plan.md` sequences all of this into phased, ownership-assigned steps — pull each task's `[SPEC]`/`[SPIKE]` + `[FORCES]` block straight from there rather than re-deriving one from scratch. Feature work for the app itself flows through a lean 3-agent roster (`.claude/agents/`), role-named (not aliased) so any teammate can tell what an agent does without cross-referencing a roster:
+This is a **team project** — anyone on the team can delegate to these subagents, so the handoff protocol below is the shared contract, not one person's convention. The idea (EZStreet — `docs/prd.md`), core architecture (`docs/adr/`), and verified Open Data rules (`docs/knowledge-base/`) are locked in. `docs/plans/ezstreet-implementation-plan.md` sequences all of this into phased, ownership-assigned steps — pull each task's `[SPEC]`/`[SPIKE]` + `[FORCES]` block straight from there rather than re-deriving one from scratch. Feature work for the app itself flows through a lean 3-role roster defined as Codex subagents in `.codex/agents/*.toml`:
 
-| Agent | Role | May edit files? | When |
+| Subagent | Role | Sandbox | When |
 | --- | --- | --- | --- |
-| `tech-lead` | Plans | No (read-only) | Non-trivial feature asks — turns them into a `[SPEC]` (≤5 files, names a Verification Oracle, states the Bounded-AI boundary). Skip for trivial one-file changes. |
-| `sdet` | Tests | Tests only | Writes the failing test first (TDD red) per the SPEC's oracle, then audits `builder`'s work — PASS/FAIL incl. the 90% coverage gate. |
-| `builder` | Implements | Yes | Single full-stack implementer for the assigned API, data, UI, or optional AI slice — makes `sdet`'s red go green. |
-| `reviewer` | Mediates/refactors | Yes (refactors) | **On-demand only.** Mediates after 2 failed `sdet` cycles on the same task, or handles a tree-wide mechanical refactor. |
+| `tech-lead` | Plans | `read-only` | Non-trivial feature asks — turns them into a `[SPEC]` (≤5 files, names a Verification Oracle, states the Bounded-AI boundary). Skip for trivial one-file changes. |
+| `sdet` | Tests | `workspace-write`, test files only (enforced by instruction, not sandbox) | Writes the failing test first (TDD red) per the SPEC's oracle, then audits `builder`'s work — PASS/FAIL incl. the 90% coverage gate. |
+| `builder` | Implements | `workspace-write` | Single full-stack implementer for the assigned API, data, UI, or optional AI slice — makes `sdet`'s red go green. |
+| `reviewer` | Mediates/refactors | `workspace-write` | **On-demand only.** Mediates after 2 failed `sdet` cycles on the same task, or handles a tree-wide mechanical refactor. |
 
 **What's deliberately cut**, to keep ceremony proportional to a 24-hour build: no dedicated routing/context-scout agents (the orchestrating session does this directly), no `SESSION_STATE.md` ledger (git history + the PRD are enough continuity for a weekend), no per-task `specs/NNN-slug.md` files (a `[SPEC]` is relayed inline in the handoff, not persisted) — the only persisted decision trail is `docs/adr/` for decisions that are costly to reverse, using the existing `docs/adr/template.md`.
 
 **Bounded-AI boundary** (the one rule that's non-negotiable regardless of ceremony level): every crash count, injury/fatality tally, contributing-factor rollup, Priority Zone overlap, completeness status, and source limitation is computed deterministically before any LLM call. The optional model receives only the structured report and may explain it in plain language. It never computes or changes facts, claims causation or safety, hides a partial status, or controls whether the factual report renders.
 
-**Default flow:** non-trivial ask → `tech-lead` (`[SPEC]`) → `sdet` (red) → `builder` (green) → `sdet` (audit) → merge. Trivial changes skip straight to `builder`. This composes with, not replaces, the existing TDD/coverage/Conventional-Commits/no-AI-trailer rules above — the agents are how those rules get executed, not an additional layer on top of them.
+**Default flow:** non-trivial ask → `tech-lead` (`[SPEC]`) → `sdet` (red) → `builder` (green) → `sdet` (audit) → merge. Trivial changes skip straight to `builder`. This composes with, not replaces, the existing TDD/coverage/Conventional-Commits/no-AI-trailer rules above — the subagents are how those rules get executed, not an additional layer on top of them.
 
 ### Handoff Schemas
 
-Canonical location — the agent files in `.claude/agents/` reference these by name and must not restate or vary them. If a schema needs to change, change it here first so every agent stays in sync.
+Keep this section in sync with `CLAUDE.md`'s `## Handoff Schemas` — same fields, same order. `tech-lead` → `sdet` → `builder` → `sdet`/`tech-lead` all read/write these exact blocks.
 
 **`[SPEC]` / `[SPIKE]`** — `tech-lead` → `sdet` → `builder`
 
@@ -130,5 +132,5 @@ No default force is imposed — `tech-lead` states the actual trade-off for the 
 ## Notes
 
 - This is a weekend hackathon repo, not a long-lived codebase — favor speed and a working demo over architectural polish.
-- **`AGENTS.md` mirrors this file for the teammate on Codex CLI** (which doesn't read `CLAUDE.md`, `.claude/agents/`, or `.claude/skills/`) — a Codex-facing twin of the roles/skills lives in `.codex/agents/*.toml` and `.agents/skills/`. Keep both files in sync when a rule changes.
 - **Current app surface**: a single placeholder page (`src/app/page.tsx`) with the project name and pitch. No report API route, map, report UI, optional explanation, `.env` file, or local Vercel project link exists yet. Build the deterministic map-to-report flow before optional AI or Street View work. Update this file with real routes and environment-variable names when they land.
+- **Skills available to Codex**: `.agents/skills/devpost-submission-checklist/` and `.agents/skills/scaffold-nextjs-app/` — ported from Claude Code's `.claude/skills/`, invoke explicitly with `$skill-name` or let them auto-trigger on a matching request.
