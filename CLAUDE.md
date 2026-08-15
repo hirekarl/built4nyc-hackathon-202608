@@ -42,7 +42,74 @@ Using generative AI and "vibe coding," build a **web app** that meets a challeng
 - **SOLID + established design patterns** when architecting non-trivial modules — favor small, single-responsibility components/functions, dependency inversion at integration boundaries (e.g. the Open Data client behind an interface, not fetch calls scattered through components), and named patterns (factory, strategy, adapter, etc.) where they clarify intent. Don't apply patterns ceremonially to trivial code — a weekend hackathon app still favors the simplest thing that satisfies SOLID, not maximal abstraction.
 - **Markdown lint + format** (repo root already set up, works today — no app scaffold needed): `npm run lint:md` (markdownlint-cli2, config at `.markdownlint-cli2.jsonc`, with an `MD041` override in `.claude/.markdownlint-cli2.jsonc` for frontmatter-led agent/skill files) and `npm run format:md` (Prettier, `.prettierrc.json` sets `proseWrap: "never"` so paragraphs stay on one unwrapped line instead of hard-wrapping — GFM tables are supported natively and get column-aligned on format). Both are wired into pre-commit/CI alongside the app's own lint/format/test once `scaffold-nextjs-app` runs.
 
+## Multi-agent build workflow
+
+This is a **team project** — anyone on the team can dispatch these agents, so the handoff protocol below is the shared contract, not one person's convention. The idea (Vision Zero Sandbox — `docs/prd.md`) and Open Data datasets (`docs/knowledge-base/`) are locked in. Once `scaffold-nextjs-app` has run, feature work for the app itself flows through a lean 3-agent roster (`.claude/agents/`), role-named (not aliased) so any teammate can tell what an agent does without cross-referencing a roster:
+
+| Agent | Role | May edit files? | When |
+|---|---|---|---|
+| `tech-lead` | Plans | No (read-only) | Non-trivial feature asks — turns them into a `[SPEC]` (≤5 files, names a Verification Oracle, states the Bounded-AI boundary). Skip for trivial one-file changes. |
+| `sdet` | Tests | Tests only | Writes the failing test first (TDD red) per the SPEC's oracle, then audits `builder`'s work — PASS/FAIL incl. the 90% coverage gate. |
+| `builder` | Implements | Yes | Single full-stack implementer (API route + UI + AI SDK call) — makes `sdet`'s red go green. |
+| `reviewer` | Mediates/refactors | Yes (refactors) | **On-demand only.** Mediates after 2 failed `sdet` cycles on the same task, or handles a tree-wide mechanical refactor. |
+
+**What's deliberately cut**, to keep ceremony proportional to a 24-hour build: no dedicated routing/context-scout agents (the orchestrating session does this directly), no `SESSION_STATE.md` ledger (git history + the PRD are enough continuity for a weekend), no per-task `specs/NNN-slug.md` files (a `[SPEC]` is relayed inline in the handoff, not persisted) — the only persisted decision trail is `docs/adr/` for genuine architecture calls (map-draw library, AI provider, overlap-computation approach), using the existing `docs/adr/template.md`.
+
+**Bounded-AI boundary** (the one rule that's non-negotiable regardless of ceremony level): every crash count, injury/fatality tally, contributing-factor rollup, and Priority Zone overlap is computed deterministically, server-side, before the single LLM call. The LLM only turns that computed summary into petition prose — it never computes or adjusts a number, and its output is validated before being rendered.
+
+**Default flow:** non-trivial ask → `tech-lead` (`[SPEC]`) → `sdet` (red) → `builder` (green) → `sdet` (audit) → merge. Trivial changes skip straight to `builder`. This composes with, not replaces, the existing TDD/coverage/Conventional-Commits/no-AI-trailer rules above — the agents are how those rules get executed, not an additional layer on top of them.
+
+### Handoff Schemas
+
+Canonical location — the agent files in `.claude/agents/` reference these by name and must not restate or vary them. If a schema needs to change, change it here first so every agent stays in sync.
+
+**`[SPEC]` / `[SPIKE]`** — `tech-lead` → `sdet` → `builder`
+
+```markdown
+[SPEC] / [SPIKE]
+- **Objective**: <what the code must achieve>
+- **Inputs/Outputs**: <types, shapes, API contract>
+- **Bounded-AI boundary**: <deterministic vs. LLM-generated — required if the task touches the petition-draft path>
+- **Verification Oracle**: <REQUIRED. Where the failure is observable — a vitest/RTL test, a Playwright flow, an API route test>
+- **Constraints**: <performance, forbidden libraries, style>
+- **Edge Cases**: <error handling, empty polygon, zero-crash result, LLM failure/timeout>
+- **Files**: <max 5 files this task may touch>
+```
+
+**`[FORCES]`** — attached to every `[SPEC]`/`[SPIKE]`
+
+```markdown
+[FORCES]
+1. <Primary force> > <Secondary force>
+2. Simplicity > Pattern purity   (always present unless explicitly overridden)
+```
+
+**`[COMPLIANCE-REPORT]`** — `sdet` → `tech-lead` / `builder`
+
+```markdown
+[COMPLIANCE-REPORT]
+- **Status**: PASS | FAIL
+- **Oracle run**: <the SPEC's declared oracle, the exact command, and its verdict>
+- **Coverage**: <current %, PASS/FAIL against the 90% gate>
+- **Bounded-AI check**: <held / violated — where>
+- **Critical violations**: <must fix before merge; empty if PASS>
+- **Recommendations**: <non-blocking improvements>
+```
+
+**`[COMPLETION-REPORT]`** — `builder` → `sdet`
+
+```markdown
+[COMPLETION-REPORT]
+- **Files changed**: <list>
+- **Spec items satisfied**: <checklist against the SPEC>
+- **Oracle status**: <the declared oracle, the command run, and its verdict>
+- **Bounded-AI boundary**: <confirm what's deterministic vs. LLM-generated, if the task touched the petition path>
+- **Known gaps**: <anything deferred, or "none">
+```
+
+**Rejection loop (circuit breaker):** `sdet` FAIL → `builder` retries in the same continuation, not a fresh dispatch. After 2 failed cycles on the same task, stop and escalate to `reviewer` — don't retry a third time.
+
 ## Notes
 
 - This is a weekend hackathon repo, not a long-lived codebase — favor speed and a working demo over architectural polish.
-- Don't prescribe app structure here; it doesn't exist yet. Update this file once the idea and scaffold are in place if there's project-specific context worth persisting (e.g. the chosen Open Data dataset, key routes).
+- Don't prescribe app structure here beyond the above; update further once the scaffold is in place if there's project-specific context worth persisting (e.g. key routes, final map-draw library choice).
