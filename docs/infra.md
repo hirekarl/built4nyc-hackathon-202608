@@ -14,7 +14,7 @@ The Vercel project is already linked locally — `.vercel/project.json` exists a
 
 Per PRD §8, the crash dataset (`h9gi-nx95`), NYC Street Centerline (`inkn-q76z`), and VZV Priority Zones (`qzji-nvbd`) queries work without a Socrata app token at hackathon-demo volume, but a token raises rate limits and should be provisioned:
 
-- Env var name: `SOCRATA_APP_TOKEN`.
+- Env var name: `SOCRATA_APP_TOKEN`. `.env.example` at the repo root is the committed template — `cp .env.example .env.local` and fill it in. It is the one `.env*` file exempted from `.gitignore`, and holds only empty keys and comments.
 - **Server-only** — no `NEXT_PUBLIC_` prefix. It must never be sent to the client bundle; only server-side adapters (Phase 2, `src/lib/adapters/*.ts`) read it.
 - Must be added via `vercel env add SOCRATA_APP_TOKEN` (or the `vercel:env` skill) for **development, preview, and production** environments before Phase 2 Step 2.4's collision queries are deployed to preview/production. Local dev can proceed without it in the meantime — the adapter should work with or without the header, per Step 2.4's `[SPEC]`.
 
