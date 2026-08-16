@@ -80,43 +80,41 @@ The app runs with **no API key**. A `SOCRATA_APP_TOKEN` is supported and only ra
 ## Architecture
 
 ```mermaid
-flowchart LR
+flowchart TB
     subgraph browser["🖥️ Browser"]
-        map["Map.tsx<br/>MapLibre GL"]
-        client["centerline-client.ts<br/>within_box + grouping"]
-        page["page.tsx<br/>selection & panel state"]
+        direction LR
+        map["Map.tsx + centerline-client.ts<br/>MapLibre GL, viewport query, grouping"]
+        page["page.tsx<br/>selection &amp; panel state"]
         panel["ReportPanel.tsx<br/>8 explicit states"]
         print["PrintReport.tsx<br/>print / save as PDF"]
+        map --> page --> panel --> print
     end
 
-    subgraph server["▲ Next.js server"]
-        route["POST /api/reports/intersection"]
+    subgraph server["▲ Next.js server — POST /api/reports/intersection"]
+        direction LR
         valid["validation.ts<br/>reject raw queries, NYC bbox,<br/>lock radius + period"]
         cl["adapters/centerline.ts<br/>re-resolve selection"]
         col["adapters/collisions.ts"]
         pz["adapters/priority-zones.ts"]
         report["report.ts<br/>deterministic assembly"]
+        valid --> cl
+        cl --> col --> report
+        cl --> pz --> report
     end
 
-    subgraph data["🗽 NYC Open Data"]
+    subgraph data["🗽 NYC Open Data — Socrata"]
+        direction LR
         d1[("inkn-q76z<br/>Street Centerline")]
         d2[("h9gi-nx95<br/>Collisions")]
         d3[("qzji-nvbd<br/>Priority Zones")]
     end
 
-    tiles[["OpenFreeMap Bright<br/>keyless tiles"]]
-
-    map --> client --> d1
-    tiles --> map
-    map --> page --> panel
-    page -- "POST" --> route
-    route --> valid --> cl --> d1
-    cl --> col --> d2
-    cl --> pz --> d3
-    col --> report
-    pz --> report
-    report -- "200 complete / partial<br/>503 source_failure" --> page
-    panel --> print
+    page -- "POST locked selection" --> valid
+    report -- "200 complete / partial · 503 source_failure" --> panel
+    map -. "within_box viewport query" .-> d1
+    cl --> d1
+    col --> d2
+    pz --> d3
 ```
 
 Two things the diagram cannot show, and both are load-bearing:
