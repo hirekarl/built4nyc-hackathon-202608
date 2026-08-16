@@ -236,6 +236,22 @@ Built against source-backed mock report responses so frontend work was not block
   1. Frontend-as-source-of-truth per issue #21 > strict adherence to PRD §9's placeholder contract.
   ```
 
+- [x] **1.10 — UX correction: full-viewport map and collapsible report drawer**
+
+  ```text
+  [SPEC]
+  - Objective: Apply the accepted map-first layout correction: a full-browser-viewport MapLibre canvas, compact floating brand/instruction and keyboard-selection controls, restrained default centerlines/candidates, and one non-modal report surface that collapses as a desktop right drawer or mobile bottom sheet.
+  - Inputs/Outputs: Input: the implemented Phase 1 map, report state machine, and shared print report. Output: invisible 34px map hit targets; subtle pointer-hover/proxy-focus treatment; the strongest accent on the locked intersection, contributing streets, and 50m boundary; persistent accessible report state cues outside the collapsible body.
+  - Bounded-AI boundary: N/A — no AI in this correction; optional AI remains deferred.
+  - Verification Oracle: Passed Map/page Vitest (42/42) for the full-viewport map and layer hierarchy; passed ReportPanel/Map/page Vitest (71/71) for the collapsible drawer and mobile sheet. TypeScript and scoped lint/format checks passed for both slices.
+  - Constraints: Preserve MapLibre attribution, native non-pointer selection parity, the deterministic report object, exact 50m/2025 facts, source provenance, and print behavior. No modal, backdrop, duplicate mobile component, or permanent coverage of the selected intersection.
+  - Edge Cases: Off-view locked selections retain their streets and 50m boundary without transferring the selected marker; loading, results, and errors remain announced while the drawer is collapsed.
+  - Files: src/app/page.tsx, src/components/Map.tsx, src/components/ReportPanel.tsx, src/app/globals.css
+
+  [FORCES]
+  1. Accepted full-viewport map and recoverable report surface > the earlier boxed two-column layout.
+  ```
+
 **Infra checkpoint (hirekarl, non-blocking):** Vercel preview checks and deployment setup can follow the completed local frontend and contract work; they do not block Phase 2 implementation against `docs/contract.md`.
 
 ---

@@ -328,6 +328,14 @@ function latestMap() {
 function pointFeatureFromMap(
   map: InstanceType<typeof maplibreHarness.MockMap>,
 ) {
+  const point = pointFeaturesFromMap(map)[0];
+  if (point) return point;
+  throw new Error("Expected an intersection Point feature");
+}
+
+function pointFeaturesFromMap(
+  map: InstanceType<typeof maplibreHarness.MockMap>,
+) {
   for (const source of map.sources.values()) {
     const collection = source.data as {
       features?: Array<{
@@ -335,12 +343,12 @@ function pointFeatureFromMap(
         properties?: Record<string, unknown>;
       }>;
     };
-    const point = collection?.features?.find(
+    const points = collection?.features?.filter(
       (feature) => feature.geometry?.type === "Point",
     );
-    if (point) return point;
+    if (points && points.length > 0) return points;
   }
-  throw new Error("Expected an intersection Point feature");
+  return [];
 }
 
 function distanceMeters(
@@ -530,7 +538,7 @@ describe("fixed analysis-circle geometry", () => {
 });
 
 describe("map selection foundation", () => {
-  it("uses OpenFreeMap Bright, keeps attribution, and creates distinct line, hit, and marker layers", async () => {
+  it("uses OpenFreeMap Bright with an invisible 34px hit layer and subdued defaults", async () => {
     vi.mocked(fetch).mockResolvedValue(jsonResponse(sourceRows));
     render(<Map onSelect={vi.fn()} />);
     const map = latestMap();
@@ -541,18 +549,131 @@ describe("map selection foundation", () => {
     await act(async () => map.trigger("load"));
     await waitFor(() => expect(map.layers.length).toBeGreaterThanOrEqual(3));
 
-    expect(map.layers).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ type: "line" }),
-        expect.objectContaining({
-          type: "circle",
-          paint: expect.objectContaining({ "circle-radius": 34 }),
-        }),
-        expect.objectContaining({
-          type: "circle",
-          paint: expect.objectContaining({ "circle-radius": 6 }),
-        }),
-      ]),
+    const centerline = map.layers.find(
+      (layer) => layer.id === "eligible-centerline-lines",
+    );
+    const hitLayer = map.layers.find(
+      (layer) => layer.id === "intersection-hit-targets",
+    );
+    const marker = map.layers.find(
+      (layer) => layer.id === "intersection-markers",
+    );
+
+    expect(hitLayer).toMatchObject({
+      type: "circle",
+      paint: {
+        "circle-radius": 34,
+        "circle-opacity": 0,
+      },
+    });
+    expect(marker).toMatchObject({
+      type: "circle",
+      paint: {
+        "circle-radius": expect.any(Number),
+        "circle-color": expect.any(String),
+        "circle-opacity": expect.any(Number),
+      },
+    });
+    expect(
+      (marker?.paint as Record<string, number>)["circle-radius"],
+    ).toBeLessThanOrEqual(3);
+    expect(
+      (marker?.paint as Record<string, number>)["circle-opacity"],
+    ).toBeLessThanOrEqual(0.5);
+    expect(centerline).toMatchObject({
+      type: "line",
+      paint: {
+        "line-color": expect.any(String),
+        "line-opacity": expect.any(Number),
+        "line-width": expect.any(Number),
+      },
+    });
+    expect(
+      (centerline?.paint as Record<string, number>)["line-opacity"],
+    ).toBeLessThanOrEqual(0.4);
+    expect(
+      (centerline?.paint as Record<string, number>)["line-width"],
+    ).toBeLessThanOrEqual(2);
+  });
+
+  it("creates a subtle hover layer and a stronger selected marker, street, fill, and outline hierarchy", async () => {
+    vi.mocked(fetch).mockResolvedValue(jsonResponse(sourceRows));
+    render(<Map onSelect={vi.fn()} />);
+    const map = latestMap();
+    await act(async () => map.trigger("load"));
+
+    const defaultMarker = map.layers.find(
+      (layer) => layer.id === "intersection-markers",
+    );
+    const hoverLayer = map.layers.find(
+      (layer) =>
+        layer.type === "circle" && /hover|focus/i.test(String(layer.id)),
+    );
+    const selectedMarker = map.layers.find(
+      (layer) =>
+        layer.type === "circle" &&
+        /selected/i.test(String(layer.id)) &&
+        /candidate|intersection/i.test(String(layer.id)),
+    );
+    const selectedStreet = map.layers.find(
+      (layer) =>
+        layer.type === "line" && /selected.*centerline/i.test(String(layer.id)),
+    );
+    const boundaryFill = map.layers.find(
+      (layer) =>
+        layer.type === "fill" && /boundary.*fill/i.test(String(layer.id)),
+    );
+    const boundaryOutline = map.layers.find(
+      (layer) =>
+        layer.type === "line" && /boundary.*outline/i.test(String(layer.id)),
+    );
+
+    expect(hoverLayer).toBeDefined();
+    expect(selectedMarker).toBeDefined();
+    expect(selectedStreet).toBeDefined();
+    expect(boundaryFill).toBeDefined();
+    expect(boundaryOutline).toBeDefined();
+
+    const defaultPaint = defaultMarker?.paint as Record<
+      string,
+      number | string
+    >;
+    const hoverPaint = hoverLayer?.paint as Record<string, number | string>;
+    const selectedPaint = selectedMarker?.paint as Record<
+      string,
+      number | string
+    >;
+    const selectedStreetPaint = selectedStreet?.paint as Record<
+      string,
+      number | string
+    >;
+    const boundaryFillPaint = boundaryFill?.paint as Record<
+      string,
+      number | string
+    >;
+    const boundaryOutlinePaint = boundaryOutline?.paint as Record<
+      string,
+      number | string
+    >;
+
+    expect(hoverPaint["circle-radius"]).toBeGreaterThan(
+      defaultPaint["circle-radius"] as number,
+    );
+    expect(selectedPaint["circle-radius"]).toBeGreaterThan(
+      hoverPaint["circle-radius"] as number,
+    );
+    expect(selectedPaint["circle-opacity"]).toBeGreaterThan(
+      hoverPaint["circle-opacity"] as number,
+    );
+    expect(selectedPaint["circle-color"]).not.toBe(
+      defaultPaint["circle-color"],
+    );
+    expect(selectedStreetPaint["line-color"]).toBe(
+      selectedPaint["circle-color"],
+    );
+    expect(boundaryFillPaint["fill-color"]).toBe(selectedPaint["circle-color"]);
+    expect(boundaryOutlinePaint["line-color"]).toBe(
+      selectedPaint["circle-color"],
     );
   });
 
@@ -634,6 +755,101 @@ describe("map selection foundation", () => {
     ).toContain("1941");
   });
 
+  it("uses the same subtle indication for pointer hover and proxy focus, then clears it", async () => {
+    vi.mocked(fetch).mockResolvedValue(jsonResponse(sourceRows));
+    render(<Map onSelect={vi.fn()} />);
+    const map = latestMap();
+    await act(async () => map.trigger("load"));
+
+    const hitLayer = map.layers.find(
+      (layer) => layer.id === "intersection-hit-targets",
+    );
+    const hoverLayer = map.layers.find(
+      (layer) =>
+        layer.type === "circle" && /hover|focus/i.test(String(layer.id)),
+    );
+    expect(hoverLayer).toBeDefined();
+
+    act(() => {
+      map.triggerLayer("mouseenter", String(hitLayer?.id), {
+        features: [pointFeatureFromMap(map)],
+      });
+    });
+    const pointerFilter = map.filters.get(String(hoverLayer?.id));
+    expect(pointerFilter).toBeDefined();
+
+    act(() => map.triggerLayer("mouseleave", String(hitLayer?.id)));
+    expect(map.filters.get(String(hoverLayer?.id))).not.toEqual(pointerFilter);
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Choose an intersection without using the map",
+      }),
+    );
+    const proxy = screen.getByRole("button", {
+      name: /W 40 ST at 5 AVE.*40\.752205.*-73\.981824/i,
+    });
+    fireEvent.focus(proxy);
+    expect(map.filters.get(String(hoverLayer?.id))).toEqual(pointerFilter);
+
+    fireEvent.blur(proxy);
+    expect(map.filters.get(String(hoverLayer?.id))).not.toEqual(pointerFilter);
+  });
+
+  it("keeps the selected candidate strongest when hover moves to another intersection", async () => {
+    const onSelect = vi.fn();
+    vi.mocked(fetch).mockResolvedValue(jsonResponse(sourceRows));
+    render(<Map onSelect={onSelect} />);
+    const map = latestMap();
+    await act(async () => map.trigger("load"));
+
+    const hitLayer = map.layers.find(
+      (layer) => layer.id === "intersection-hit-targets",
+    );
+    const selectedMarker = map.layers.find(
+      (layer) =>
+        layer.type === "circle" &&
+        /selected/i.test(String(layer.id)) &&
+        /candidate|intersection/i.test(String(layer.id)),
+    );
+    const boundaryOutline = map.layers.find(
+      (layer) =>
+        layer.type === "line" && /boundary.*outline/i.test(String(layer.id)),
+    );
+    expect(selectedMarker).toBeDefined();
+    expect(boundaryOutline).toBeDefined();
+
+    const [first, second] = pointFeaturesFromMap(map);
+    act(() => {
+      map.triggerLayer("click", String(hitLayer?.id), { features: [first] });
+    });
+    const lockedMarkerFilter = map.filters.get(String(selectedMarker?.id));
+    const lockedStreetFilter = map.filters.get("selected-centerline-lines");
+    expect(lockedMarkerFilter).toBeDefined();
+    expect(JSON.stringify(lockedStreetFilter)).toContain("183093");
+    expect(
+      [...map.sources.values()].some(
+        (source) =>
+          (source.data as { properties?: { radiusMeters?: number } })
+            ?.properties?.radiusMeters === 50,
+      ),
+    ).toBe(true);
+
+    act(() => {
+      map.triggerLayer("mouseenter", String(hitLayer?.id), {
+        features: [second],
+      });
+    });
+
+    expect(map.filters.get(String(selectedMarker?.id))).toEqual(
+      lockedMarkerFilter,
+    );
+    expect(map.filters.get("selected-centerline-lines")).toEqual(
+      lockedStreetFilter,
+    );
+    expect(onSelect).toHaveBeenCalledOnce();
+  });
+
   it("aborts the prior viewport request and ignores its late response", async () => {
     const requests: Array<{
       signal?: AbortSignal;
@@ -709,11 +925,15 @@ describe("keyboard-accessible intersection proxy", () => {
     const toggle = screen.getByRole("button", {
       name: "Choose an intersection without using the map",
     });
+    expect(toggle.closest(".map-floating-controls")).toBeInTheDocument();
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     const listId = toggle.getAttribute("aria-controls");
     expect(listId).toBeTruthy();
     const controlledList = document.getElementById(String(listId));
-    if (controlledList) expect(controlledList).not.toBeVisible();
+    if (controlledList) {
+      expect(controlledList).toHaveClass("intersection-proxy-popover");
+      expect(controlledList).not.toBeVisible();
+    }
     await waitFor(() =>
       expect(screen.getByRole("status")).toHaveTextContent(
         "13 eligible intersections in this map view.",
@@ -881,6 +1101,45 @@ describe("keyboard-accessible intersection proxy", () => {
             ?.properties?.radiusMeters === 50,
       ),
     ).toBe(true);
+  });
+
+  it("does not transfer the selected marker to a different candidate after a viewport update", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(jsonResponse(sourceRows.slice(0, 2)))
+      .mockResolvedValueOnce(jsonResponse(sourceRows.slice(2, 4)));
+    const onSelect = vi.fn();
+    render(<Map onSelect={onSelect} />);
+    const map = latestMap();
+    await act(async () => map.trigger("load"));
+
+    const hitLayer = map.layers.find(
+      (layer) => layer.id === "intersection-hit-targets",
+    );
+    const selectedMarker = map.layers.find(
+      (layer) => layer.id === "selected-intersection-candidate",
+    );
+    act(() => {
+      map.triggerLayer("click", String(hitLayer?.id), {
+        features: [pointFeatureFromMap(map)],
+      });
+    });
+    expect(onSelect).toHaveBeenCalledWith(
+      expect.objectContaining({ displayName: "W 40 ST at 5 AVE" }),
+    );
+
+    act(() => map.trigger("moveend"));
+    await waitFor(() =>
+      expect(pointFeatureFromMap(map).properties?.displayName).toBe(
+        "E 42 ST at PARK AVE",
+      ),
+    );
+
+    expect(map.filters.get(String(selectedMarker?.id))).toEqual([
+      "==",
+      ["get", "candidateIndex"],
+      -1,
+    ]);
+    expect(onSelect).toHaveBeenCalledOnce();
   });
 
   it("removes a stale proxy list on failure and exposes retry", async () => {

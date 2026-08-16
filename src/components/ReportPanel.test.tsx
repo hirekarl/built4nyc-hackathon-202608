@@ -71,6 +71,27 @@ function expectMetric(label: string, value: string | number) {
   expect(term.nextElementSibling).toHaveTextContent(String(value));
 }
 
+function getDrawerParts() {
+  const panel = screen.getByRole("complementary", { name: /safety report/i });
+  const toggle = within(panel).getByRole("button", {
+    name: /(?:collapse|expand) safety report/i,
+  });
+  const bodyId = toggle.getAttribute("aria-controls");
+  const body = bodyId ? document.getElementById(bodyId) : null;
+  const announcement = panel.querySelector('[aria-live="polite"]');
+
+  expect(bodyId).toBeTruthy();
+  expect(body).not.toBeNull();
+  expect(announcement).not.toBeNull();
+
+  return {
+    announcement: announcement as HTMLElement,
+    body: body as HTMLElement,
+    panel,
+    toggle,
+  };
+}
+
 describe("ReportPanel controlled states", () => {
   it("renders the initial state", () => {
     renderPanel({ state: "initial", selected: null });
@@ -174,6 +195,171 @@ describe("ReportPanel controlled states", () => {
     ).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /retry/i }));
     expect(onRetry).toHaveBeenCalledOnce();
+  });
+});
+
+describe("ReportPanel drawer presentation", () => {
+  it("defaults expanded with a persistent native toggle and related body", () => {
+    renderPanel({ state: "ready" });
+
+    const { announcement, body, panel, toggle } = getDrawerParts();
+    expect(toggle.tagName).toBe("BUTTON");
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(body).not.toHaveAttribute("hidden");
+    expect(body).toBeVisible();
+    expect(announcement).toBeVisible();
+    expect(body).not.toContainElement(announcement);
+    expect(panel).not.toHaveAttribute("aria-modal");
+    expect(panel).not.toHaveAttribute("role", "dialog");
+    expect(document.querySelector(".report-drawer-backdrop")).toBeNull();
+  });
+
+  it("collapses and reopens without moving focus from the toggle", () => {
+    renderPanel({ state: "ready" });
+
+    let { body, toggle } = getDrawerParts();
+    toggle.focus();
+    fireEvent.click(toggle);
+
+    ({ body, toggle } = getDrawerParts());
+    expect(toggle).toHaveFocus();
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(body).toHaveAttribute("hidden");
+    expect(body).not.toBeVisible();
+
+    fireEvent.click(toggle);
+    ({ body, toggle } = getDrawerParts());
+    expect(toggle).toHaveFocus();
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(body).not.toHaveAttribute("hidden");
+    expect(body).toBeVisible();
+  });
+
+  it.each<[PanelState, RegExp]>([
+    ["initial", /select|no intersection/i],
+    ["ready", /ready|selected/i],
+    ["loading", /loading|retrieving|generating/i],
+    ["complete", /complete/i],
+    ["partial", /partial/i],
+    ["zero-match", /no (?:crash|match)|zero/i],
+    ["validation-error", /selection|validation|error/i],
+    ["source-failure", /source|data|unavailable|failure/i],
+  ])("shows a concise persistent cue for %s", (state, expectedCue) => {
+    const report =
+      state === "complete"
+        ? completeReport
+        : state === "partial"
+          ? w40At5AveReportMock
+          : state === "zero-match"
+            ? zeroMatchReportMock
+            : state === "source-failure"
+              ? partialSourceReportMock
+              : null;
+    renderPanel({
+      state,
+      selected: state === "initial" ? null : selection,
+      report,
+    });
+
+    const panel = screen.getByRole("complementary", {
+      name: /safety report/i,
+    });
+    const cue = panel.querySelector(".report-state-cue");
+    expect(cue).not.toBeNull();
+    expect(cue).toHaveTextContent(expectedCue);
+    expect(cue).toBeVisible();
+  });
+
+  it("stays collapsed and announces loading completion outside the hidden body", () => {
+    const onGenerate = vi.fn();
+    const onRetry = vi.fn();
+    const onClearSelection = vi.fn();
+    const print = vi.spyOn(window, "print").mockImplementation(() => undefined);
+    const view = render(
+      <ReportPanel
+        state="loading"
+        selection={selection}
+        report={null}
+        onGenerate={onGenerate}
+        onRetry={onRetry}
+        onClearSelection={onClearSelection}
+      />,
+    );
+
+    fireEvent.click(getDrawerParts().toggle);
+    expect(getDrawerParts().announcement).toHaveTextContent(
+      /retrieving NYC Open Data/i,
+    );
+
+    view.rerender(
+      <ReportPanel
+        state="partial"
+        selection={selection}
+        report={w40At5AveReportMock}
+        onGenerate={onGenerate}
+        onRetry={onRetry}
+        onClearSelection={onClearSelection}
+      />,
+    );
+
+    const drawer = getDrawerParts();
+    const { announcement } = drawer;
+    let { body, toggle } = drawer;
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(body).toHaveAttribute("hidden");
+    expect(announcement).toHaveTextContent(/partial report/i);
+    expect(body).not.toContainElement(announcement);
+    expect(onGenerate).not.toHaveBeenCalled();
+    expect(onRetry).not.toHaveBeenCalled();
+    expect(onClearSelection).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      within(body).getByRole("button", {
+        name: "Print or save as PDF",
+        hidden: true,
+      }),
+    );
+    expect(print).toHaveBeenCalledOnce();
+    const printable = screen.getByRole("article", {
+      name: "Printable safety report",
+    });
+    expect(printable).toHaveTextContent("W 40 ST at 5 AVE");
+    expect(printable).toHaveTextContent("6");
+
+    fireEvent.click(toggle);
+    ({ body, toggle } = getDrawerParts());
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(body).toBeVisible();
+    expect(
+      within(body).getByRole("heading", { name: "W 40 ST at 5 AVE" }),
+    ).toBeInTheDocument();
+  });
+
+  it("announces an error without reopening a deliberately collapsed drawer", () => {
+    const props = {
+      selection,
+      report: null,
+      onGenerate: vi.fn(),
+      onRetry: vi.fn(),
+      onClearSelection: vi.fn(),
+    };
+    const view = render(<ReportPanel state="loading" {...props} />);
+
+    fireEvent.click(getDrawerParts().toggle);
+    view.rerender(
+      <ReportPanel
+        {...props}
+        state="source-failure"
+        report={partialSourceReportMock}
+      />,
+    );
+
+    const { announcement, body, toggle } = getDrawerParts();
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(body).toHaveAttribute("hidden");
+    expect(announcement).toHaveTextContent(
+      /required data could not be loaded/i,
+    );
   });
 });
 

@@ -75,27 +75,28 @@ This section is the build contract for the initial frontend. A mockup may suppor
 ### 6.1 Layout
 
 - Use a map-first, desktop-first layout.
-- The map occupies the main viewport.
-- A side panel contains guidance, the current selection, report controls, and report content.
-- Keep map attribution visible.
-- On narrow screens, the side panel becomes a bottom sheet or stacked panel without covering the selected intersection permanently.
+- The MapLibre canvas fills the browser viewport as the primary workspace.
+- Branding, the short instruction, map status, retry, and keyboard-selection controls use compact floating overlays over the map.
+- The report uses a non-modal, collapsible floating right drawer for guidance, the current selection, report controls, and report content.
+- Keep map attribution visible and clear of the floating overlays.
+- On narrow screens, the report becomes a collapsible, bounded-height bottom sheet so it does not cover the selected intersection permanently.
 - Do not require horizontal scrolling at supported viewport sizes.
 
 ### 6.2 Initial state
 
-- Show the product name and one short instruction: select an intersection to create a safety report.
+- Show the product name and one short instruction in a compact floating overlay: select an intersection to create a safety report.
 - Center the demo view on Midtown Manhattan between Bryant Park and Grand Central.
-- Show eligible centerlines and intersection hit targets without overwhelming the basemap.
+- Show eligible centerlines and small, subdued intersection markers without overwhelming the basemap; keep the larger interaction targets invisible.
 - Keep the report action disabled until an intersection is selected.
 
 ### 6.3 Hover and selection
 
-- Hovering an eligible intersection changes its visual style and displays the official street names.
-- The pointer cursor and visible focus treatment must indicate that the target is interactive.
-- The interactive target may be larger than its visible marker; the verified spike used a 34-pixel hit target.
+- Hovering or focusing an eligible intersection adds the same subtle visual indication and displays the official street names.
+- The pointer cursor and visible keyboard focus treatment must indicate that the target is interactive.
+- Use an invisible 34-pixel hit target that is separate from the small visible marker.
 - Clicking or keyboard-activating an intersection selects it.
-- Selection highlights the intersection and contributing streets and draws the 50-meter circle.
-- The side panel shows the official display name, `Calendar year 2025`, and `50 meters (about 164 feet)` before analysis.
+- Selection gives the intersection, its contributing streets, and the 50-meter circle the strongest map accent.
+- The report drawer shows the official display name, `Calendar year 2025`, and `50 meters (about 164 feet)` before analysis.
 - A clear action lets the user remove or replace the selection.
 - Selecting another intersection replaces the current selection and clears any prior report after confirmation or an unambiguous state transition.
 
@@ -130,11 +131,14 @@ Metric cards with missing values display `Unavailable`, not `0`, `N/A`, or an es
 ### 6.6 Visual and accessibility direction
 
 - Use a restrained civic-information style with high contrast and dense but readable report content.
-- Reserve the strongest accent for the selected intersection and its boundary.
+- Keep branding and map controls compact, and keep the floating report drawer or mobile bottom sheet collapsible so users can recover the map view.
+- Keep default centerlines and candidate markers neutral, small, and low-opacity; the invisible 34-pixel hit layer must never appear as decoration.
+- Use a subtle indication for pointer hover and keyboard focus.
+- Reserve the strongest accent for the selected intersection, its contributing streets, and the 50-meter boundary fill and outline.
 - Use consistent tokens for map hover, map selection, complete, partial, warning, and failure states.
 - Do not use red/green color alone to communicate safety or status.
 - All controls require visible labels, keyboard access, focus styles, and usable target sizes.
-- The map needs a non-pointer way to activate a focused intersection.
+- The compact map controls must provide a native, non-pointer intersection list with the same selection result as the map.
 - Screen-reader status announcements must cover loading, completion, partial results, errors, and selection changes.
 - Run the repository's Playwright/axe accessibility check for the page.
 

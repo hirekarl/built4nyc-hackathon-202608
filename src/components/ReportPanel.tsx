@@ -50,6 +50,28 @@ const PRIORITY_LABELS: Record<PriorityZoneStatus, string> = {
   not_matched: "Not matched",
   unavailable: "Unavailable",
 };
+const REPORT_DRAWER_BODY_ID = "safety-report-drawer-body";
+
+const STATE_CUES: Record<ReportPanelState, string> = {
+  initial: "Select an intersection to create a safety report.",
+  ready: "Intersection selected. Report ready to generate.",
+  loading: "Retrieving NYC Open Data…",
+  complete: "Complete report.",
+  partial: "Partial report.",
+  "zero-match": "No crash matches for this boundary and period.",
+  "validation-error": "Selection validation error.",
+  "source-failure": "Required data could not be loaded.",
+};
+
+function stateCue(
+  state: ReportPanelState,
+  selection: IntersectionSelection | null,
+): string {
+  if (state === "ready" && selection) {
+    return `${selection.displayName} selected. Report ready to generate.`;
+  }
+  return STATE_CUES[state];
+}
 
 function subscribeToPrintSupport(): () => void {
   return () => undefined;
@@ -288,6 +310,7 @@ export default function ReportPanel({
     noServerPrintMedia,
   );
   const [printRequested, setPrintRequested] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const hasReport =
     report !== null &&
     (state === "complete" || state === "partial" || state === "zero-match");
@@ -300,19 +323,36 @@ export default function ReportPanel({
   return (
     <>
       <aside
-        className="report-panel"
+        className={`report-panel${expanded ? "" : " report-panel--collapsed"}`}
         aria-label="Safety report"
-        aria-busy={state === "loading"}
       >
         <div className="panel-heading">
-          <p className="eyebrow">NYC Open Data</p>
-          <h2>Safety report</h2>
+          <div className="panel-heading-copy">
+            <p className="eyebrow">NYC Open Data</p>
+            <h2>Safety report</h2>
+          </div>
+          <button
+            type="button"
+            className="report-drawer-toggle"
+            aria-expanded={expanded}
+            aria-controls={REPORT_DRAWER_BODY_ID}
+            onClick={() => setExpanded((current) => !current)}
+          >
+            {expanded ? "Collapse safety report" : "Expand safety report"}
+          </button>
+          <p className="report-state-cue" aria-live="polite" aria-atomic="true">
+            {stateCue(state, selection)}
+          </p>
         </div>
 
-        <div className="report-live" aria-live="polite">
+        <div
+          id={REPORT_DRAWER_BODY_ID}
+          className="report-live report-drawer-body"
+          aria-busy={state === "loading"}
+          hidden={!expanded}
+        >
           {state === "initial" && (
             <div className="panel-state panel-state--initial">
-              <p>Select an intersection to create a safety report.</p>
               <button type="button" className="button button--primary" disabled>
                 Generate safety report
               </button>

@@ -26,6 +26,10 @@ const CENTERLINE_LAYER_ID = "eligible-centerline-lines";
 const SELECTED_CENTERLINE_LAYER_ID = "selected-centerline-lines";
 const INTERSECTION_HIT_LAYER_ID = "intersection-hit-targets";
 const INTERSECTION_MARKER_LAYER_ID = "intersection-markers";
+const INTERSECTION_HOVER_LAYER_ID = "intersection-hover-focus-marker";
+const SELECTED_INTERSECTION_LAYER_ID = "selected-intersection-candidate";
+const BOUNDARY_FILL_LAYER_ID = "selected-boundary-fill";
+const BOUNDARY_OUTLINE_LAYER_ID = "selected-boundary-outline";
 const PROXY_LIST_ID = "intersection-keyboard-proxy";
 const PAGE_SIZE = 12;
 
@@ -113,6 +117,7 @@ export default function Map({ onSelect }: MapProps) {
   const abortControllerRef = useRef<AbortController | null>(null);
   const requestIdRef = useRef(0);
   const mountedRef = useRef(false);
+  const selectedKeyRef = useRef<string | null>(null);
   const [candidates, setCandidates] = useState<IntersectionCandidate[]>([]);
   const [proxyExpanded, setProxyExpanded] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -142,11 +147,47 @@ export default function Map({ onSelect }: MapProps) {
         ["get", "physicalId"],
         ["literal", candidate.physicalIds],
       ]);
-      setSelectedKey(candidateKey(candidate));
+      const index = candidatesRef.current.findIndex(
+        (currentCandidate) =>
+          candidateKey(currentCandidate) === candidateKey(candidate),
+      );
+      map.setFilter(SELECTED_INTERSECTION_LAYER_ID, [
+        "==",
+        ["get", "candidateIndex"],
+        index,
+      ]);
+      const nextSelectedKey = candidateKey(candidate);
+      selectedKeyRef.current = nextSelectedKey;
+      setSelectedKey(nextSelectedKey);
       onSelect(selection);
     },
     [onSelect],
   );
+
+  const indicateCandidate = useCallback(
+    (index: number, candidate: IntersectionCandidate) => {
+      const map = mapRef.current;
+      if (!map) return;
+      map.setFilter(INTERSECTION_HOVER_LAYER_ID, [
+        "==",
+        ["get", "candidateIndex"],
+        index,
+      ]);
+      setHoveredName(candidate.displayName);
+    },
+    [],
+  );
+
+  const clearCandidateIndication = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.setFilter(INTERSECTION_HOVER_LAYER_ID, [
+      "==",
+      ["get", "candidateIndex"],
+      -1,
+    ]);
+    setHoveredName(null);
+  }, []);
 
   const loadViewport = useCallback(async () => {
     const map = mapRef.current;
@@ -163,6 +204,9 @@ export default function Map({ onSelect }: MapProps) {
     setVisibleCount(PAGE_SIZE);
     setCandidates([]);
     candidatesRef.current = [];
+    if (map.getLayer(INTERSECTION_HOVER_LAYER_ID)) {
+      clearCandidateIndication();
+    }
 
     try {
       const centerlines = await fetchEligibleCenterlines(boundsFromMap(map), {
@@ -174,6 +218,13 @@ export default function Map({ onSelect }: MapProps) {
         groupIntersectionCandidates(centerlines),
         map.getCenter(),
       );
+      const lockedKey = selectedKeyRef.current;
+      const selectedIndex =
+        lockedKey === null
+          ? -1
+          : nextCandidates.findIndex(
+              (candidate) => candidateKey(candidate) === lockedKey,
+            );
       candidatesRef.current = nextCandidates;
       setCandidates(nextCandidates);
       (
@@ -182,6 +233,11 @@ export default function Map({ onSelect }: MapProps) {
       (
         map.getSource(INTERSECTION_SOURCE_ID) as GeoJSONSource | undefined
       )?.setData(candidatesFeatureCollection(nextCandidates));
+      map.setFilter(SELECTED_INTERSECTION_LAYER_ID, [
+        "==",
+        ["get", "candidateIndex"],
+        selectedIndex,
+      ]);
       setEmpty(nextCandidates.length === 0);
     } catch (loadError) {
       if (
@@ -205,7 +261,7 @@ export default function Map({ onSelect }: MapProps) {
         setLoading(false);
       }
     }
-  }, []);
+  }, [clearCandidateIndication]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -241,9 +297,73 @@ export default function Map({ onSelect }: MapProps) {
         type: "line",
         source: CENTERLINE_SOURCE_ID,
         paint: {
-          "line-color": "#d97706",
-          "line-opacity": 0.8,
+          "line-color": "#52606d",
+          "line-opacity": 0.28,
+          "line-width": 1.25,
+        },
+      });
+      map.addLayer({
+        id: BOUNDARY_FILL_LAYER_ID,
+        type: "fill",
+        source: BOUNDARY_SOURCE_ID,
+        paint: {
+          "fill-color": "#c2410c",
+          "fill-opacity": 0.14,
+        },
+      });
+      map.addLayer({
+        id: SELECTED_CENTERLINE_LAYER_ID,
+        type: "line",
+        source: CENTERLINE_SOURCE_ID,
+        filter: ["in", ["get", "physicalId"], ["literal", []]],
+        paint: {
+          "line-color": "#c2410c",
+          "line-opacity": 0.94,
+          "line-width": 5,
+        },
+      });
+      map.addLayer({
+        id: INTERSECTION_MARKER_LAYER_ID,
+        type: "circle",
+        source: INTERSECTION_SOURCE_ID,
+        paint: {
+          "circle-color": "#52606d",
+          "circle-opacity": 0.42,
+          "circle-radius": 2.5,
+        },
+      });
+      map.addLayer({
+        id: INTERSECTION_HOVER_LAYER_ID,
+        type: "circle",
+        source: INTERSECTION_SOURCE_ID,
+        filter: ["==", ["get", "candidateIndex"], -1],
+        paint: {
+          "circle-color": "#52606d",
+          "circle-opacity": 0.68,
+          "circle-radius": 5,
+        },
+      });
+      map.addLayer({
+        id: BOUNDARY_OUTLINE_LAYER_ID,
+        type: "line",
+        source: BOUNDARY_SOURCE_ID,
+        paint: {
+          "line-color": "#c2410c",
+          "line-opacity": 0.95,
           "line-width": 3,
+        },
+      });
+      map.addLayer({
+        id: SELECTED_INTERSECTION_LAYER_ID,
+        type: "circle",
+        source: INTERSECTION_SOURCE_ID,
+        filter: ["==", ["get", "candidateIndex"], -1],
+        paint: {
+          "circle-color": "#c2410c",
+          "circle-opacity": 1,
+          "circle-radius": 8,
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 2,
         },
       });
       map.addLayer({
@@ -256,37 +376,6 @@ export default function Map({ onSelect }: MapProps) {
           "circle-radius": 34,
         },
       });
-      map.addLayer({
-        id: SELECTED_CENTERLINE_LAYER_ID,
-        type: "line",
-        source: CENTERLINE_SOURCE_ID,
-        filter: ["in", ["get", "physicalId"], ["literal", []]],
-        paint: {
-          "line-color": "#b45309",
-          "line-opacity": 1,
-          "line-width": 7,
-        },
-      });
-      map.addLayer({
-        id: INTERSECTION_MARKER_LAYER_ID,
-        type: "circle",
-        source: INTERSECTION_SOURCE_ID,
-        paint: {
-          "circle-color": "#d97706",
-          "circle-radius": 6,
-          "circle-stroke-color": "#ffffff",
-          "circle-stroke-width": 2,
-        },
-      });
-      map.addLayer({
-        id: "selected-boundary-fill",
-        type: "fill",
-        source: BOUNDARY_SOURCE_ID,
-        paint: {
-          "fill-color": "#d97706",
-          "fill-opacity": 0.16,
-        },
-      });
       void loadViewport();
     };
 
@@ -294,14 +383,18 @@ export default function Map({ onSelect }: MapProps) {
       const index = candidateIndex(event.features?.[0]);
       const candidate =
         index === null ? undefined : candidatesRef.current[index];
-      if (!candidate) return;
+      if (!candidate || index === null) {
+        map.getCanvas().style.cursor = "";
+        clearCandidateIndication();
+        return;
+      }
       map.getCanvas().style.cursor = "pointer";
-      setHoveredName(candidate.displayName);
+      indicateCandidate(index, candidate);
     };
 
     const handleLeave = () => {
       map.getCanvas().style.cursor = "";
-      setHoveredName(null);
+      clearCandidateIndication();
     };
 
     const handleClick = (event: { features?: MapGeoJSONFeature[] }) => {
@@ -330,15 +423,20 @@ export default function Map({ onSelect }: MapProps) {
       map.remove();
       mapRef.current = null;
     };
-  }, [loadViewport, selectCandidate]);
+  }, [
+    clearCandidateIndication,
+    indicateCandidate,
+    loadViewport,
+    selectCandidate,
+  ]);
 
   const visibleCandidates = candidates.slice(0, visibleCount);
   const candidateStatus = `${candidates.length} eligible intersection${candidates.length === 1 ? "" : "s"} in this map view.`;
 
   return (
-    <section aria-label="Street intersection map">
-      <div ref={containerRef} style={{ minHeight: "32rem" }} />
-      <div className="map-controls">
+    <section className="street-map" aria-label="Street intersection map">
+      <div ref={containerRef} className="maplibre-canvas" />
+      <div className="map-floating-controls">
         <button
           type="button"
           className="intersection-proxy-toggle"
@@ -349,19 +447,25 @@ export default function Map({ onSelect }: MapProps) {
           Choose an intersection without using the map
         </button>
 
-        <div id={PROXY_LIST_ID} hidden={!proxyExpanded}>
+        <div
+          id={PROXY_LIST_ID}
+          className="intersection-proxy-popover"
+          hidden={!proxyExpanded}
+        >
           {proxyExpanded && candidates.length > 0 && (
             <>
               <ul
                 className="intersection-proxy-list"
                 aria-label="Intersections in this map view"
               >
-                {visibleCandidates.map((candidate) => (
+                {visibleCandidates.map((candidate, index) => (
                   <li key={candidateKey(candidate)}>
                     <button
                       type="button"
                       aria-label={proxyAccessibleName(candidate)}
                       aria-pressed={selectedKey === candidateKey(candidate)}
+                      onFocus={() => indicateCandidate(index, candidate)}
+                      onBlur={clearCandidateIndication}
                       onClick={() => selectCandidate(candidate)}
                     >
                       <span>{candidate.displayName}</span>
