@@ -436,6 +436,107 @@ describe("Home", () => {
     ).toBeEnabled();
   });
 
+  it("aborts the in-flight fetch when a newer selection supersedes it, and stays silent when the aborted request later rejects", async () => {
+    fetchMock.mockImplementationOnce(
+      (_url: string, init: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init.signal?.addEventListener("abort", () => {
+            reject(
+              new DOMException("The operation was aborted.", "AbortError"),
+            );
+          });
+        }),
+    );
+
+    render(<Home />);
+    selectIntersection(/select W 40 ST at 5 AVE/i);
+    clickGenerate();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(init.signal?.aborted).toBe(false);
+
+    // Reselecting mid-flight must actually abort the superseded request, not
+    // just discard its eventual result.
+    selectIntersection(/select E 42 ST at PARK AVE/i);
+    expect(init.signal?.aborted).toBe(true);
+
+    // Let the aborted fetch's rejection settle — it must not surface
+    // source-failure for a request the user already moved on from.
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByText("E 42 ST at PARK AVE")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /generate safety report/i }),
+    ).toBeEnabled();
+  });
+
+  it("surfaces the source-failure panel state when the request exceeds the fetch timeout", async () => {
+    vi.useFakeTimers();
+    try {
+      fetchMock.mockImplementationOnce(
+        (_url: string, init: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init.signal?.addEventListener("abort", () => {
+              reject(
+                new DOMException("The operation was aborted.", "TimeoutError"),
+              );
+            });
+          }),
+      );
+
+      render(<Home />);
+      selectIntersection(/select W 40 ST at 5 AVE/i);
+      clickGenerate();
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("status")).toHaveTextContent(/retrieving/i);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30_000);
+      });
+
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        /required data could not be loaded/i,
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("aborts the in-flight fetch on unmount instead of leaving it running", async () => {
+    fetchMock.mockImplementationOnce(
+      (_url: string, init: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init.signal?.addEventListener("abort", () => {
+            reject(
+              new DOMException("The operation was aborted.", "AbortError"),
+            );
+          });
+        }),
+    );
+
+    const { unmount } = render(<Home />);
+    selectIntersection(/select W 40 ST at 5 AVE/i);
+    clickGenerate();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(init.signal?.aborted).toBe(false);
+
+    unmount();
+    expect(init.signal?.aborted).toBe(true);
+
+    // The rejected fetch settling after unmount must not attempt to update
+    // state on the unmounted tree.
+    await act(async () => {
+      await Promise.resolve();
+    });
+  });
+
   it("ignores a late-arriving response after the selection has been cleared", async () => {
     const deferred = deferredResponse();
     fetchMock.mockReturnValueOnce(deferred.promise);
