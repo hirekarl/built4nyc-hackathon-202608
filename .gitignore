@@ -275,3 +275,5 @@ $RECYCLE.BIN/
 ### App ###
 docs/private/*
 .env*
+# The committed template. It holds only empty keys and comments, never a value.
+!.env.example
