@@ -34,9 +34,7 @@ https://github.com/hirekarl/ezstreet
 next.js, react, typescript, maplibre-gl, nyc-open-data, socrata, soql, turf.js, tailwindcss, vitest, playwright, axe-core, vercel
 ```
 
-## About the project
-
-### Inspiration
+## Inspiration
 
 NYC's collision data is public, but it isn't _accessible_. Answering an ordinary local question — "what has actually been reported at my corner?" — currently takes GIS knowledge, dataset research, and careful interpretation. The data sits in a Socrata portal behind a query language, spread across three datasets that don't obviously join.
 
@@ -44,7 +42,7 @@ That gap matters because a printed, sourced, one-corner safety report is exactly
 
 So we picked the challenge of **access to city resources — specifically, access to the city's own street-safety record.**
 
-### What it does
+## What it does
 
 You select one official NYC street intersection on a map. EZStreet locks the city's own name for that intersection, draws a fixed 50-meter analysis boundary, and generates a deterministic street-safety report for calendar year 2025:
 
@@ -63,7 +61,7 @@ Three things it deliberately refuses to do:
 2. **It never grades your street.** A zero result is reported as a zero result — never as evidence that a corner is safe.
 3. **It never lets a language model touch a fact.**
 
-### How we built it
+## How we built it
 
 Next.js 16 (App Router) on Vercel, TypeScript, MapLibre GL JS with OpenFreeMap tiles, and `@turf/boolean-intersects` for the geometry. Three NYC Open Data datasets, each with exactly one deterministic role, all queried live at request time:
 
@@ -79,7 +77,7 @@ Inputs are server-authoritative. The browser cannot supply a query, a radius, a 
 
 The app runs with **no API key** and no signup.
 
-### Challenges we ran into
+## Challenges we ran into
 
 **NYC has no intersection dataset.** This was the real surprise, and it reshaped the project. Getting the derivation right — grouping, naming, the two-distinct-streets rule, and what to do about multi-roadbed nodes like Grand Central — took more work than the entire collision query.
 
@@ -89,7 +87,7 @@ The app runs with **no API key** and no signup.
 
 **Keeping a viewport-driven fetch cancellable** without leaking stale responses into the map.
 
-### Accomplishments that we're proud of
+## Accomplishments that we're proud of
 
 **There is no LLM anywhere in the data path, and none at runtime in the live demo.** We used AI tools heavily to _build_ this — Claude Code and Codex CLI, all weekend — and then drew a hard line at the product. We had an "Explain this report" feature scoped and bounded by [ADR-0005](./adr/0005-deterministic-report-and-bounded-ai.md), and we [deferred it](https://github.com/hirekarl/ezstreet/issues/20) rather than ship it unbounded against a deadline. For a tool that reports fatalities at a specific corner, a plausible-sounding wrong number is worse than no feature.
 
@@ -104,7 +102,7 @@ The app runs with **no API key** and no signup.
 
 **Quality gates that actually hold:** 275 tests, 99% coverage against a hard 90% floor, end-to-end Playwright flows against live NYC Open Data, and a clean production build — all enforced on every pull request.
 
-### What we learned
+## What we learned
 
 None of us had built this before.
 
@@ -114,7 +112,7 @@ None of us had built this before.
 - **Modelling missing data honestly**, and how far that decision reaches once you commit to it.
 - **Running a multi-agent AI workflow across two different CLIs** — Claude Code and Codex CLI against one checked-in agent roster — without losing traceability of who, human or agent, decided what.
 
-### What's next for EZStreet
+## What's next for EZStreet
 
 - **"Explain this report"** — already scoped and bounded by ADR-0005: the model may only receive a finished report and restate it in plainer language, never compute, alter, hide, or gate a fact.
 - Resolving multi-roadbed nodes such as Grand Central into a single named intersection rather than separate candidates.
@@ -126,3 +124,31 @@ None of us had built this before.
 [`docs/assets/screenshot-report.jpg`](./assets/screenshot-report.jpg) — a live report for E 40 ST at 5 AVE at W 40 ST against real 2025 NYPD data.
 
 Re-verified against production on 2026-08-16: 6 crashes, 7 people injured, 1 person killed, Priority Zone **Matched**, all three sources `available`, zero console errors.
+
+## Thumbnail to upload
+
+[`docs/assets/devpost-thumbnail.png`](./assets/devpost-thumbnail.png) — 1200×800 (3:2), matches Devpost's recommended ratio.
+
+## Image gallery to upload
+
+All five are 1200×800 PNGs (3:2), captured live against `localhost:3000` on 2026-08-16, well under the 5 MB cap. Upload in this order; the **Caption** line under each is copy-paste text for Devpost's per-image caption field (140-character limit — each is under it).
+
+1. [`docs/assets/gallery/01-map-selection.png`](./assets/gallery/01-map-selection.png)
+
+   Caption: `Pick any official NYC intersection — click the map or use the keyboard-accessible list of the same candidates.` (110 chars)
+
+2. [`docs/assets/gallery/02-keyboard-accessible-list.png`](./assets/gallery/02-keyboard-accessible-list.png)
+
+   Caption: `Mouse-only isn't enough. Every map intersection is also in a focusable list — zero a11y violations in CI.` (105 chars)
+
+3. [`docs/assets/gallery/03-honest-zero-results.png`](./assets/gallery/03-honest-zero-results.png)
+
+   Caption: `PARK AVE at E 41 ST: zero pedestrians injured or killed. A real zero, reported as a zero — never as "safe."` (107 chars)
+
+4. [`docs/assets/gallery/04-safety-report.png`](./assets/gallery/04-safety-report.png)
+
+   Caption: `E 40 ST at 5 AVE at W 40 ST: crashes, injuries, fatalities, and a road-user breakdown from live 2025 NYPD data.` (111 chars)
+
+5. [`docs/assets/gallery/05-sourced-and-honest.png`](./assets/gallery/05-sourced-and-honest.png)
+
+   Caption: `Every figure traces to a dataset ID, its role, status, and retrieval time — printed on the report itself.` (105 chars)
