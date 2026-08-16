@@ -124,7 +124,7 @@ Built against source-backed mock report responses so frontend work was not block
   1. Server/client separation (display fetch vs. server-validated selection, ADR-0003) > code reuse between client and future server adapter.
   ```
 
-- [ ] **1.3 — SPIKE: Grand Central multi-roadbed node naming fallback**
+- [x] **1.3 — SPIKE: Grand Central multi-roadbed node naming fallback**
 
   ```text
   [SPIKE]
