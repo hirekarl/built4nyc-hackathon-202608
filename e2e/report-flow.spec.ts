@@ -17,6 +17,19 @@ import type { IntersectionReport } from "../src/types/report";
  * reach them via the keyboard proxy list (reused from
  * `report-panel-a11y.spec.ts`) — see that spec for the established
  * interaction patterns this file reuses rather than reinventing.
+ *
+ * The two tests below are tagged `@live-data` and asserted as EXACT PRD §12
+ * values on purpose — Step 3.5 forbids weakening them to a floor. That
+ * precision is also why they must not run in the required CI merge gate:
+ * `h9gi-nx95` is appended to continuously as NYPD backfills late-reported
+ * crashes, so one such backfill flips a count and reds every PR with no
+ * code change involved, on an unauthenticated/throttle-prone connection with
+ * no `SOCRATA_APP_TOKEN` provisioned. `.github/workflows/ci.yml`'s `e2e` job
+ * runs `--grep-invert @live-data` for exactly this reason. `npm run
+ * test:e2e:live` runs the full suite including these two, for use on demand
+ * (e.g. before a submission) rather than as a merge gate. The Step 3.4 and
+ * 3.6 tests below also hit live Socrata but assert status/shape/a11y rather
+ * than exact counts, so they stay in the required gate.
  */
 
 const NETWORK_TIMEOUT = 90_000;
@@ -403,7 +416,7 @@ test.describe("Live end-to-end report flow (real NYC Open Data, no stubs)", () =
   // live-network fixtures one at a time rather than in parallel workers.
   test.describe.configure({ mode: "serial" });
 
-  test(`full happy-path flow: map to printed report — ${FIXTURE_1.caseName}`, async ({
+  test(`full happy-path flow: map to printed report — ${FIXTURE_1.caseName} @live-data`, async ({
     page,
   }) => {
     test.setTimeout(240_000);
@@ -484,7 +497,7 @@ test.describe("Live end-to-end report flow (real NYC Open Data, no stubs)", () =
     await expectSources(printReport);
   });
 
-  test(`exact PRD §12 fixture numbers via real UI → real API → real Socrata — ${FIXTURE_2.caseName}`, async ({
+  test(`exact PRD §12 fixture numbers via real UI → real API → real Socrata — ${FIXTURE_2.caseName} @live-data`, async ({
     page,
   }) => {
     test.setTimeout(240_000);

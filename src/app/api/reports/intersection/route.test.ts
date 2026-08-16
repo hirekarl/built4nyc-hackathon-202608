@@ -576,32 +576,43 @@ describe("contract-conformance guard — HTTP 200 body matches docs/contract.md 
     // PRD §12 fixture 2: 9 crashes, 4 injured, 0 killed, 2 pedestrians
     // injured, 2 cyclists injured, 0 motorists injured/killed, with 3 of 9
     // records missing on_street_name (the documented data-quality
-    // limitation).
+    // limitation) and 6 of 9 recording the literal factor value NYPD uses
+    // for "Unspecified" (documented live unspecifiedFactors: 6, no named
+    // contributing factor documented for this fixture, hence
+    // contributingFactors: [] below).
     return [
       collisionRow({
         collision_id: "5800001",
         number_of_persons_injured: "1",
         number_of_pedestrians_injured: "1",
+        contributing_factor_vehicle_1: "Unspecified",
       }),
       collisionRow({
         collision_id: "5800002",
         number_of_persons_injured: "1",
         number_of_pedestrians_injured: "1",
+        contributing_factor_vehicle_1: "Unspecified",
       }),
       collisionRow({
         collision_id: "5800003",
         number_of_persons_injured: "1",
         number_of_cyclist_injured: "1",
+        contributing_factor_vehicle_1: "Unspecified",
       }),
       collisionRow({
         collision_id: "5800004",
         number_of_persons_injured: "1",
         number_of_cyclist_injured: "1",
+        contributing_factor_vehicle_1: "Unspecified",
       }),
-      collisionRow({ collision_id: "5800005" }),
+      collisionRow({
+        collision_id: "5800005",
+        contributing_factor_vehicle_1: "Unspecified",
+      }),
       collisionRow({
         collision_id: "5800006",
         on_street_name: null,
+        contributing_factor_vehicle_1: "Unspecified",
       }),
       collisionRow({
         collision_id: "5800007",
@@ -726,7 +737,7 @@ describe("contract-conformance guard — HTTP 200 body matches docs/contract.md 
       motoristsInjured: 0,
       motoristsKilled: 0,
       contributingFactors: [],
-      unspecifiedFactors: 0,
+      unspecifiedFactors: 6,
     });
     expect(Array.isArray(metrics.contributingFactors)).toBe(true);
 

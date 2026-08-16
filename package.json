@@ -19,6 +19,8 @@
     "test": "vitest run --coverage",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:ci": "playwright test --grep-invert @live-data",
+    "test:e2e:live": "playwright test --grep @live-data",
     "test:e2e:ui": "playwright test --ui",
     "prepare": "husky"
   },

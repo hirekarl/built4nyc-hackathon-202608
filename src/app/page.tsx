@@ -45,12 +45,23 @@ function stateForReport(report: IntersectionReport): ReportPanelState {
  * instead of leaving the panel on "Retrieving NYC Open Data…" forever.
  */
 function createReportRequestSignal(controller: AbortController): AbortSignal {
+  // Guard both APIs, not just AbortSignal.any: on a runtime missing
+  // AbortSignal.timeout (e.g. Safari < 15.4), calling it here would throw
+  // synchronously, outside handleGenerate's try and before setPanelState
+  // moves to "loading" — a completely dead Generate button with no loading
+  // cue and no error state. Falling back to the plain controller signal
+  // keeps supersede/unmount abort working everywhere and only forgoes the
+  // independent timeout guard on those older runtimes.
+  if (typeof AbortSignal.timeout !== "function") {
+    return controller.signal;
+  }
   const timeoutSignal = AbortSignal.timeout(REPORT_FETCH_TIMEOUT_MS);
   if (typeof AbortSignal.any === "function") {
     return AbortSignal.any([controller.signal, timeoutSignal]);
   }
-  // Fallback for runtimes without AbortSignal.any: forward whichever of the
-  // two fires first onto the request controller itself.
+  // Fallback for runtimes with AbortSignal.timeout but without
+  // AbortSignal.any: forward whichever of the two fires first onto the
+  // request controller itself.
   timeoutSignal.addEventListener(
     "abort",
     () => controller.abort(timeoutSignal.reason),

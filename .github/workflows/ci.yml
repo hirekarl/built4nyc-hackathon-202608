@@ -59,5 +59,10 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      # test:e2e:ci excludes the two @live-data tests in report-flow.spec.ts:
+      # they assert exact PRD §12 crash counts against live, continuously
+      # backfilled NYC Open Data with no SOCRATA_APP_TOKEN provisioned, so an
+      # upstream data edit (not a code change) can red this required job.
+      # Run `npm run test:e2e:live` on demand for that proof instead.
       - name: Run E2E tests
-        run: npm run test:e2e
+        run: npm run test:e2e:ci
