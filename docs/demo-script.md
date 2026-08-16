@@ -1,137 +1,174 @@
 ---
 type: demo-script
-status: draft
-source: drafted 2026-08-16 for the 2:15 PM live judging round
+status: rehearsal-ready
+source: revised 2026-08-16 for the 2:15 PM live judging round
 ---
 
-# EZStreet — live demo script (~3 minutes)
+# EZStreet — live judging package
 
-For the in-person judging round, 7th floor SNFL, Sunday 2:15 PM. Presenter drives the live app at <https://ezstreet.vercel.app> on screen.
+For the in-person judging round at SNFL. Present the public app at <https://ezstreet.vercel.app>. This package has two parts:
 
-**The whole pitch hangs on one fact:** SNFL is **455 Fifth Avenue, at 40th Street**. `E 40 ST at 5 AVE at W 40 ST` — our PRD §12 acceptance case — is the corner immediately outside this building. Every number below was re-verified against live production at 11:34 AM today. Open on that corner.
+1. **Script 1** is the timed, live-demo beats sheet.
+2. **Script 2** is the background, claim guardrails, and Q&A sheet. It is not spoken unless a judge asks.
 
-Spoken lines are plain text. `[Bracketed italics]` are stage directions, not spoken. Lines marked **(cut)** are the first things to drop if you are running long.
-
----
-
-## Beat 1 — Hook (0:00–0:25)
-
-_[App already open, map centered on Bryant Park / Grand Central. Nothing selected yet.]_
-
-> 455 Fifth Avenue. This building. The corner right outside — 40th and Fifth.
->
-> In 2025, six crashes were reported within fifty meters of that corner. Seven people were injured. One person was killed.
->
-> None of us knew that before this weekend. We found out because we built the thing that could tell us.
-
-**Delivery note:** state the fatality plainly and move on. No pause for effect, no grimace. The product's whole ethic is reporting the record without editorializing — the pitch should sound the same way.
-
-## Beat 2 — The problem (0:25–0:50)
-
-> All of that is already public. NYPD publishes every reported collision. It is on NYC Open Data right now.
->
-> But to get from "my corner" to that answer, you need to know three separate datasets, know that **NYC publishes no intersection dataset at all**, and write a geospatial query in Socrata's query language.
->
-> A parent, a block association, a community board member is not going to do that. So the data is public and effectively out of reach. **(cut: last sentence)**
-
-## Beat 3 — The live demo (0:50–2:00)
-
-> This is EZStreet. It is live, no signup, no API key.
-
-_[Hover slowly across two or three intersections so judges see the hover highlight and street names.]_
-
-> These are real NYC street centerlines for whatever is in the viewport. I am hovering the city's own record — I am not dropping a pin. Because NYC publishes no intersection dataset, we derive them: group centerline endpoints on an exact coordinate key, and require at least two distinct official street names before it becomes selectable.
-
-_[Click the 40th & 5th intersection. Let the 50 m circle draw.]_
-
-> Here is our corner — under the official name the city uses for it — and a fixed fifty-meter analysis boundary. The **server** owns that radius. The browser cannot change it, and the server re-resolves this selection against official centerline data before it trusts a single field of it. **(cut: second sentence)**
-
-_[Click **Generate safety report**. Say the next line over the loading state — do not narrate silence.]_
-
-> It is querying NYC Open Data live, right now, while we stand here.
-
-_[Report renders. Scroll at a readable pace as you hit each section.]_
-
-> Headline facts: six crashes, seven injured, one killed.
->
-> Road users: four pedestrians injured, one killed. One cyclist injured. Two motorists injured.
->
-> Ranked contributing factors — driver inattention leads with four. And `Unspecified` is counted on its own line, rather than quietly folded into the others.
->
-> This boundary overlaps a Vision Zero priority area.
->
-> And every source is cited on the report itself: dataset name, Socrata ID, retrieval status, timestamp, and a link.
-
-_[Click **Print or save as PDF**. Show the print document for ~3 seconds, then close it.]_
-
-> It prints as its own document, not a screenshot of the panel — because the artifact a community board actually asks for is a piece of paper with the city's numbers and citations on it.
-
-## Beat 4 — Why it's different (2:00–2:35)
-
-> Here is the part we most want you to notice.
->
-> There is **no language model anywhere in this data path.** Not one. Every count, every rollup, every status is computed deterministically on the server. The same corner produces the same report every time.
->
-> If a source degrades, the report says **Partial**, keeps the valid facts, and names what is missing. A missing value renders as "Unavailable" — never as a zero. Those two things mean opposite things, and we never conflate them.
->
-> And it will not grade your street. A zero is reported as a zero, not as a verdict that a corner is safe.
-
-## Beat 5 — AI usage, and what we learned (2:35–2:55)
-
-_[Rubric beat: "AI Usage & Technology" and "Learning" are scored directly. Say this crisply — it is not filler.]_
-
-> We did build it with AI — Claude Code and Codex CLI, four agent roles on a contract checked into the repo. The agent that writes the failing tests structurally **cannot** write implementation code, so TDD actually held.
->
-> But `main` requires a human approving review — no agent merged its own work. CI enforces ninety percent coverage and a zero-violation accessibility scan. And we scoped an "Explain this report" feature and deliberately cut it rather than ship it unbounded against a deadline. For a tool that reports a death at a specific corner, a confident wrong number is worse than no feature.
->
-> What we learned: how to derive intersections from raw centerline data — and that most of "responsible AI" turned out to be deciding where the model does **not** go. **(cut: first clause)**
-
-## Beat 6 — Close (2:55–3:00)
-
-> EZStreet. Street facts, clearly sourced. It's live at ezstreet dot vercel dot app.
+The target is three minutes and roughly 350–400 spoken words. Read current numbers from the screen: NYC may backfill historic collision data.
 
 ---
 
-## Pre-flight checklist (do these before 2:15)
+## Script 1 — timed live-demo beats
 
-1. Load <https://ezstreet.vercel.app> on the presenting machine **and complete one full report** — this warms the Vercel function and the cached priority-zone polygons, so the judged run is fast.
-2. Leave the map on the Bryant Park / Grand Central default view, nothing selected.
-3. Browser zoom so the report drawer text is legible from a few feet back. Close devtools. Silence notifications.
-4. Have `docs/assets/screenshot-report.jpg` open in a background tab as the WiFi fallback.
-5. Confirm the numbers have not moved — NYPD backfills this dataset continuously:
+### Before the judges arrive
 
-   ```bash
-   npm run test:e2e:live
-   ```
+- Use production, not localhost.
+- Complete one warm-up report, then reset the map with no selection.
+- Keep the map centered on Bryant Park / Grand Central.
+- Open [`docs/assets/screenshot-report.jpg`](./assets/screenshot-report.jpg) in a second tab as the fallback.
+- Close devtools, silence notifications, and set browser zoom so the report is readable from a few feet away.
+- One person presents and drives. One teammate is ready for technical questions. One teammate keeps the fallback ready.
 
-   If the counts have shifted, **read the new numbers off the screen** rather than the ones in this script. Do not correct yourself mid-pitch; just say what the app says.
+### Beat 1 — local hook · 0:00–0:20
 
-## If something breaks
+**Screen:** The unselected map around the library.
 
-- **Map won't load / WiFi dies:** switch to the screenshot tab and keep talking. Say: "The live demo is at ezstreet.vercel.app and it was up ten minutes ago — here is the report it produces." Do not debug in front of judges.
-- **Report comes back Partial:** this is a gift, not a failure. Say: "This is exactly the case we designed for — a source degraded, so it says Partial, keeps what it verified, and names what's missing. It did not invent a zero."
-- **Numbers differ from this script:** read the screen. The dataset is continuously backfilled and that is itself a point in your favor — mention it in one clause and move on.
+**Say:**
 
-## Likely judge questions
+> We are at 455 Fifth Avenue. The corner outside this building is 40th and Fifth. In 2025, six crashes were reported within 50 meters of that corner. Seven people were injured, and one person was killed. That information is public, but it is not easy for a resident to find and verify.
 
-| Question | Answer |
+**Proves:** NYC relevance, impact, and the first-30-second demo moment.
+
+**Cut first:** “That information is public, but it is not easy for a resident to find and verify.”
+
+### Beat 2 — product promise · 0:20–0:35
+
+**Screen:** Hover one eligible intersection.
+
+**Say:**
+
+> EZStreet turns one official NYC intersection into a clear, sourced street-safety report. You do not enter an address or drop a pin. You select an intersection derived from the city’s official street-centerline records.
+
+**Proves:** Product definition, design, and originality.
+
+### Beat 3 — live map-to-report flow · 0:35–1:40
+
+**Screen actions:**
+
+1. Select `E 40 ST at 5 AVE at W 40 ST`.
+2. Pause on the visible 50-meter boundary.
+3. Select **Generate safety report**.
+4. When the report appears, point to headline facts, Priority Zone, and sources.
+
+**Say:**
+
+> This is the city-derived name for the corner and a fixed 50-meter analysis boundary. The server verifies that selection against official centerline data, then queries NYC Open Data live.
+>
+> Here are the headline facts: six crashes, seven people injured, and one killed. The report also shows road-user breakdowns, contributing factors, and whether this boundary overlaps a Vision Zero Priority Zone.
+>
+> Every source is attached with its dataset name, ID, retrieval status, timestamp, and link. The report can also be printed or saved as a PDF.
+
+**Proves:** Completion, theme, live NYC Open Data use, and the central user experience.
+
+**Cut first:** Do not narrate individual road-user categories, factors, or the print action. Judges can see them.
+
+### Beat 4 — why the report is trustworthy · 1:40–2:05
+
+**Screen:** Keep the completed report and source list visible.
+
+**Say:**
+
+> Every report fact is calculated deterministically from documented city fields. If a source is unavailable, the report says Partial, keeps the facts it could verify, and marks missing values as Unavailable—never as a false zero. And a zero result is never presented as proof that an intersection is safe.
+
+**Proves:** Technical depth, safety, and responsible design.
+
+### Beat 5 — AI usage and human control · 2:05–2:30
+
+**Screen:** Keep the report visible; do not switch to a technical diagram.
+
+**Say:**
+
+> We used Claude Code and Codex CLI to plan, test, and implement EZStreet. We separated planning, test-writing, implementation, and review, while humans made the product decisions and approved the final implementation pull requests. We deliberately kept language models out of the factual data path. A plausible but incorrect fatality count would be worse than no generated explanation.
+
+**Proves:** Responsible AI use and human-in-the-loop control.
+
+**Cut first:** “A plausible but incorrect fatality count would be worse than no generated explanation.”
+
+### Beat 6 — learning, impact, close · 2:30–3:00
+
+**Say:**
+
+> Our biggest technical lesson was that NYC Open Data does not provide the ready-made selectable intersection layer we needed. We derived it from official centerline endpoints, then connected it to collision and Priority Zone data. EZStreet gives residents a shareable report they can inspect, print, and verify. EZStreet: street facts, clearly sourced.
+
+**Proves:** Learning, originality, and impact.
+
+### If the live demo breaks
+
+- **Map or Wi-Fi fails:** Switch to the screenshot. Say: “Here is the report the live app produces from the same public NYC data.” Do not debug in front of judges.
+- **The report is Partial:** Say: “This is the failure state we designed for: it keeps verified facts and identifies what is unavailable. It does not invent a zero.”
+- **The numbers changed:** Read the screen. Say: “NYC backfills reported collision data, so this report shows the current source result and retrieval time.”
+
+---
+
+## Script 2 — background, guardrails, and Q&A
+
+### Product facts
+
+| Topic | Accurate answer |
 | --- | --- |
-| "Where's the AI?" | In how it was built, not in what it reports — and that was the deliberate call. Four agent roles, TDD enforced structurally, human review required to merge. No model touches a number. |
-| "Why only 2025?" | A complete calendar year, so no partial-year comparison is misleading. Multi-year is a date control, not a rearchitecture. |
-| "Why 50 meters?" | Server-authoritative and fixed, so two people analyzing the same corner get the same report. Recorded in ADR-0003. |
-| "Is this real data or cached?" | Live at request time, three NYC Open Data datasets, queried when you clicked. No database in the app at all. |
-| "What would you do next?" | Multi-year trend, the bounded "Explain this report" feature we deferred, and segment-level analysis for a whole block rather than one node. |
-| "Best Use of NYC Open Data?" | Three datasets, three distinct roles — and the non-obvious part is that NYC publishes no intersection dataset, so the selection layer had to be derived from centerline endpoint grouping. |
+| Product | EZStreet lets a user select one official NYC intersection and receive a sourced street-safety report. |
+| Scope | Intersections only, a fixed 50-meter circle, and calendar year 2025. |
+| Demo result | At the time of rehearsal: 6 crashes, 7 people injured, and 1 person killed at `E 40 ST at 5 AVE at W 40 ST`. Always use the live screen as the source for the current result. |
+| Source roles | NYC Street Centerline (`inkn-q76z`) supplies selection geometry and names; Motor Vehicle Collisions – Crashes (`h9gi-nx95`) supplies crash metrics; VZV Priority Zones or Areas (`qzji-nvbd`) supplies contextual overlap. |
+| Data meaning | The report counts **reported crashes** inside the displayed circle during 2025. It is not a safety score, prediction, causation claim, or engineering recommendation. |
+| Missing data | `0` means a successful query returned no matches. `Unavailable` means the required data could not be computed. |
+| Privacy | No account, saved report, or personal input is required for this MVP. |
 
-## Timing
+### Technical proof points
 
-| Beat             | Target | Running |
-| ---------------- | ------ | ------- |
-| 1 Hook           | 0:25   | 0:25    |
-| 2 Problem        | 0:25   | 0:50    |
-| 3 Live demo      | 1:10   | 2:00    |
-| 4 Differentiator | 0:35   | 2:35    |
-| 5 AI & learning  | 0:20   | 2:55    |
-| 6 Close          | 0:05   | 3:00    |
+- Next.js and TypeScript on Vercel.
+- MapLibre with OpenFreeMap tiles for the map.
+- Server-side validation and re-resolution of the selected intersection.
+- Socrata geospatial queries for collision data.
+- Geometric Priority Zone overlap against the 50-meter circle.
+- Unit tests, end-to-end tests, accessibility scans, type checks, and production build checks.
 
-Taking every **(cut)** brings this to roughly 2:30, which is the version to rehearse if the round is running behind.
+### Claim guardrails
+
+| Say this | Do not say this |
+| --- | --- |
+| “The final implementation pull requests received human approval.” | “`main` requires approving review.” |
+| “We separated planning, test-writing, implementation, and review roles.” | “The test-writing agent technically could not edit implementation.” |
+| “NYC Open Data does not provide the ready-made selectable intersection layer we needed.” | “NYC has no intersection dataset at all.” |
+| “The report is a shareable document with numbers, limitations, and citations.” | “A community board specifically asks for this exact paper.” |
+
+### Known limitations
+
+- This MVP analyzes intersections, not a whole street segment.
+- Multi-roadbed nodes around Grand Central remain separate candidates rather than one simplified intersection name.
+- NYC may backfill historic collision reports, so figures can change after retrieval.
+- Reported crashes do not represent every incident or current street conditions.
+- No user study or measured time-saving claim has been completed.
+- Street View, petitions, permits, editable exports, saved reports, and a user-facing AI explanation are deferred features, not current claims.
+
+### Likely judge questions
+
+| Question | Short answer |
+| --- | --- |
+| Where is the AI? | We used Claude Code and Codex CLI to build and test EZStreet, with humans making decisions and approving final implementation work. No model generates or changes report facts. |
+| Why no AI-generated report? | A report about injuries and deaths needs reproducible facts. We scoped a bounded explanation feature but did not ship it under deadline pressure. |
+| Is this real data? | Yes. The report queries three NYC Open Data datasets at report time and displays each source on the result. |
+| Why only 2025? | It is a complete calendar year, so the report does not compare a partial year with a full one. |
+| Why 50 meters? | It is a fixed, server-enforced boundary so the same intersection is analyzed consistently by every user. |
+| Why only intersections? | That is the focused MVP. Street-segment analysis needs a different line-buffer method and is a future extension. |
+| Does a zero mean the street is safe? | No. It only means no reported crashes matched the defined boundary and period. |
+| What happens when a source fails? | The report becomes Partial, keeps valid facts, identifies the unavailable source, and lets the user retry. |
+| Why does the name include E 40, 5 AVE, and W 40? | Fifth Avenue divides East and West 40th Street. Those official centerline segments meet at the same coordinate, so EZStreet preserves the city-derived grouping rather than inventing a simpler name. |
+| Could the numbers change? | Yes. NYC can backfill records. The report shows the retrieval time, and we read the live result during the demo. |
+| What would you build next? | Multi-year comparison, street-segment analysis, and the bounded plain-language explanation we deliberately deferred. |
+| Can this replace city or engineering advice? | No. It is a sourced information tool, not a safety rating or regulatory recommendation. |
+
+### Presenter quick reference
+
+- Live app: <https://ezstreet.vercel.app>
+- Repository: <https://github.com/hirekarl/ezstreet>
+- Tracks: General and Best Use of NYC Open Data.
+- First answer: give one sentence. Add technical detail only if the judge asks.
+- If a judge asks about an unbuilt feature, state that it is deferred instead of promising it as current functionality.
