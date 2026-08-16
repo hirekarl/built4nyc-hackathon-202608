@@ -30,7 +30,10 @@ jobs:
           npm run format:md:check
 
       # vitest does not type-check and eslint does not either, so type errors
-      # in test files reach the build stage otherwise.
+      # in test files reach the build stage otherwise. The script runs
+      # `next typegen` first because tsconfig includes `.next/types`, where
+      # Next generates globals like LayoutProps — without it `tsc` fails on a
+      # clean checkout that has never been built.
       - name: Typecheck
         run: npm run typecheck
 

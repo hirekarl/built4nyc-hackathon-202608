@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "lint:md": "markdownlint-cli2 \"**/*.md\"",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,mjs,cjs,json,css}\"",
     "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,mjs,cjs,json,css}\"",
