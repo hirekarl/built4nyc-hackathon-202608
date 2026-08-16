@@ -428,7 +428,7 @@ Gated on Phase 1 Step 1.9 **and** Phase 2 Step 2.7 both merged.
   1. True end-to-end fidelity (real dataset, real API) > faster but less-trustworthy stubbed e2e runs.
   ```
 
-- [ ] **3.4 — Failure/partial smoke test**
+- [x] **3.4 — Failure/partial smoke test**
 
   ```text
   [SPEC]
@@ -460,7 +460,7 @@ Gated on Phase 1 Step 1.9 **and** Phase 2 Step 2.7 both merged.
   1. Exact-value acceptance verification > approximate/smoke-level assertions.
   ```
 
-- [ ] **3.6 — Full axe scan on the completed page**
+- [x] **3.6 — Full axe scan on the completed page**
 
   ```text
   [SPEC]

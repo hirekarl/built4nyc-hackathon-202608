@@ -100,7 +100,7 @@ export default function PrintReport({
     >
       <header className="report-identity">
         <p className="eyebrow">EZStreet safety report</p>
-        <h2>{report.selection.displayName}</h2>
+        <h1>{report.selection.displayName}</h1>
         <div className={`report-status report-status--${report.status}`}>
           <p className="status-label">
             <span className="status-icon" aria-hidden="true">
@@ -133,28 +133,28 @@ export default function PrintReport({
       </header>
 
       <section aria-labelledby="print-primary-metrics-heading">
-        <h3 id="print-primary-metrics-heading">Headline facts</h3>
+        <h2 id="print-primary-metrics-heading">Headline facts</h2>
         <Metrics report={report} definitions={PRIMARY_METRICS} />
       </section>
 
       <section aria-labelledby="print-road-users-heading">
-        <h3 id="print-road-users-heading">Road users</h3>
+        <h2 id="print-road-users-heading">Road users</h2>
         <Metrics report={report} definitions={ROAD_USER_METRICS} />
       </section>
 
       <section aria-labelledby="print-factors-heading">
-        <h3 id="print-factors-heading">Contributing factors</h3>
+        <h2 id="print-factors-heading">Contributing factors</h2>
         <Factors report={report} />
       </section>
 
       <section aria-labelledby="print-priority-zone-heading">
-        <h3 id="print-priority-zone-heading">Priority Zone</h3>
+        <h2 id="print-priority-zone-heading">Priority Zone</h2>
         <p>{PRIORITY_LABELS[report.priorityZone.status]}</p>
       </section>
 
       {report.notes.length > 0 && (
         <section aria-labelledby="print-notes-heading">
-          <h3 id="print-notes-heading">Data-quality notes</h3>
+          <h2 id="print-notes-heading">Data-quality notes</h2>
           <ul className="text-list">
             {report.notes.map((note) => (
               <li key={note}>{note}</li>
@@ -165,7 +165,7 @@ export default function PrintReport({
 
       {report.limitations.length > 0 && (
         <section aria-labelledby="print-limitations-heading">
-          <h3 id="print-limitations-heading">Limitations</h3>
+          <h2 id="print-limitations-heading">Limitations</h2>
           <ul className="text-list">
             {report.limitations.map((limitation) => (
               <li key={limitation}>{limitation}</li>
@@ -175,7 +175,7 @@ export default function PrintReport({
       )}
 
       <section aria-labelledby="print-sources-heading">
-        <h3 id="print-sources-heading">Sources</h3>
+        <h2 id="print-sources-heading">Sources</h2>
         <ul className="source-list">
           {report.sources.map((source) => (
             <li key={source.datasetId}>
