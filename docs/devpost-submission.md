@@ -89,12 +89,12 @@ The app runs with **no API key** and no signup.
 
 ## Accomplishments that we're proud of
 
-**There is no LLM anywhere in the data path, and none at runtime in the live demo.** We used AI tools heavily to _build_ this — Claude Code and Codex CLI, all weekend — and then drew a hard line at the product. We had an "Explain this report" feature scoped and bounded by [ADR-0005](./adr/0005-deterministic-report-and-bounded-ai.md), and we [deferred it](https://github.com/hirekarl/ezstreet/issues/20) rather than ship it unbounded against a deadline. For a tool that reports fatalities at a specific corner, a plausible-sounding wrong number is worse than no feature.
+**There is no LLM anywhere in the data path, and none at runtime in the live demo.** We used AI tools heavily to _build_ this — Claude Code and Codex CLI, all weekend — and then drew a hard line at the product. We had an "Explain this report" feature scoped and bounded by [ADR-0005](https://github.com/hirekarl/ezstreet/blob/main/docs/adr/0005-deterministic-report-and-bounded-ai.md), and we [deferred it](https://github.com/hirekarl/ezstreet/issues/20) rather than ship it unbounded against a deadline. For a tool that reports fatalities at a specific corner, a plausible-sounding wrong number is worse than no feature.
 
 **Human in the loop, with receipts:**
 
 - `main` is branch-protected and requires a human approving review. No agent merged its own work.
-- Decisions expensive to reverse were made by humans first, in [ADRs](./adr/README.md), before code existed.
+- Decisions expensive to reverse were made by humans first, in [ADRs](https://github.com/hirekarl/ezstreet/tree/main/docs/adr), before code existed.
 - A commit hook rejects AI `Co-Authored-By` trailers. Authorship stays with the people accountable for the code.
 - CI is the authority, not the model: lint, typecheck, ≥90% coverage, an accessibility scan, and a production build all gate merge.
 
