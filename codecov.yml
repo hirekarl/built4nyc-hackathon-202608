@@ -1,0 +1,28 @@
+# Codecov configuration.
+#
+# The ≥90% coverage gate is owned by `npm test` (vitest thresholds), which hard-fails
+# CI below the line. Codecov exists here for visibility — the README badge and the
+# per-PR diff view — not as a second, independently-tunable gate that could disagree
+# with the first one.
+#
+# `informational: true` is what keeps those two roles separate. Codecov still computes
+# and reports both statuses, so the numbers stay visible on every PR, but neither can
+# ever resolve to a failure. Without it, `patch` defaults to requiring the PR's own
+# changed lines to meet the project coverage target, so a PR that adds a few
+# defensively-uncovered lines picks up a red ✗ from Codecov while `npm test` — the
+# actual gate — is passing. That reads as a broken build to anyone browsing the repo.
+#
+# This matches the reasoning already recorded on the upload step in
+# .github/workflows/ci.yml, where `fail_ci_if_error: false` keeps a Codecov outage from
+# reddening a merge gate for the same reason.
+#
+# Docs: https://docs.codecov.com/docs/commit-status
+
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true
