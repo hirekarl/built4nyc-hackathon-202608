@@ -17,12 +17,17 @@ import type {
  * Parses a raw NYPD numeric-count field into a well-formed non-negative
  * integer, or `null` if the value is missing/malformed.
  *
- * Absent (`undefined`), explicit `null`, empty string (`""`), non-numeric
- * strings, and negative numbers are all malformed -> `null`. A malformed
- * value is NEVER coerced to `0` (see docs/contract.md's null-vs-zero rule).
+ * Absent (`undefined`), explicit `null`, empty or whitespace-only strings,
+ * non-numeric strings, and negative numbers are all malformed -> `null`. A
+ * malformed value is NEVER coerced to `0` (see docs/contract.md's
+ * null-vs-zero rule).
+ *
+ * The emptiness check trims first because `Number(" ")` is `0` in JS — an
+ * untrimmed whitespace field would pass the finite/non-negative guard below
+ * and fabricate a safety metric that was never actually reported.
  */
 function parseCount(value: string | null | undefined): number | null {
-  if (value === null || value === undefined || value === "") {
+  if (value === null || value === undefined || value.trim() === "") {
     return null;
   }
   const parsed = Number(value);
@@ -200,10 +205,14 @@ function buildSummary(collisions: CollisionFetchResult): string {
  * missing count is neither 0 (nothing to disclose) nor the full row count
  * (that would instead be a collision-source outage, not a labeling gap).
  */
-function buildDataQualityDisclosure(collisions: CollisionFetchResult): {
+interface DataQualityDisclosure {
   limitation: string | null;
   note: string | null;
-} {
+}
+
+function buildDataQualityDisclosure(
+  collisions: CollisionFetchResult,
+): DataQualityDisclosure {
   if (collisions.status !== "available") {
     return { limitation: null, note: null };
   }
@@ -220,9 +229,13 @@ function buildDataQualityDisclosure(collisions: CollisionFetchResult): {
   };
 }
 
+// `disclosure` is passed in rather than recomputed: it scans up to
+// COLLISION_LIMIT (5000) rows, and it feeds both the limitations list and the
+// notes list, so `assembleIntersectionReport` computes it once.
 function buildLimitations(
   collisions: CollisionFetchResult,
   priorityZone: PriorityZoneResult,
+  disclosure: DataQualityDisclosure,
 ): string[] {
   const limitations: string[] = [];
   if (collisions.status !== "available") {
@@ -231,16 +244,14 @@ function buildLimitations(
   if (priorityZone.status === "unavailable") {
     limitations.push(PRIORITY_ZONE_UNAVAILABLE_LIMITATION);
   }
-  const { limitation } = buildDataQualityDisclosure(collisions);
-  if (limitation) {
-    limitations.push(limitation);
+  if (disclosure.limitation) {
+    limitations.push(disclosure.limitation);
   }
   return limitations;
 }
 
-function buildNotes(collisions: CollisionFetchResult): string[] {
-  const { note } = buildDataQualityDisclosure(collisions);
-  return note ? [note] : [];
+function buildNotes(disclosure: DataQualityDisclosure): string[] {
+  return disclosure.note ? [disclosure.note] : [];
 }
 
 function buildSources(
@@ -304,6 +315,8 @@ export function assembleIntersectionReport(input: {
       ? aggregateCollisionMetrics(collisions.rows)
       : NULL_METRICS;
 
+  const disclosure = buildDataQualityDisclosure(collisions);
+
   return {
     schemaVersion: "1",
     reportId,
@@ -321,8 +334,8 @@ export function assembleIntersectionReport(input: {
     },
     metrics,
     priorityZone,
-    limitations: buildLimitations(collisions, priorityZone),
-    notes: buildNotes(collisions),
+    limitations: buildLimitations(collisions, priorityZone, disclosure),
+    notes: buildNotes(disclosure),
     sources: buildSources(collisions, priorityZone, generatedAt),
   };
 }

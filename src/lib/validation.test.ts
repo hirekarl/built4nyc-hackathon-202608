@@ -527,6 +527,23 @@ describe("raw_query_not_allowed — rejects raw-SoQL-shaped input", () => {
     );
   });
 
+  it("accepts a legitimate street name that merely contains the word 'select'", () => {
+    // The pattern is applied to every string in the payload, so a bare
+    // `select ` substring would reject a real intersection over nothing.
+    // Injection needs a SoQL shape, not the word on its own.
+    const result = validateReportRequest(
+      validRequest({
+        selection: {
+          ...validRequest().selection,
+          displayName: "SELECT ST at PRESELECT AVE",
+          streetNames: ["SELECT ST", "PRESELECT AVE"],
+        },
+      }),
+    );
+
+    expect(result.ok).toBe(true);
+  });
+
   it("rejects a $where key nested inside selection", () => {
     expectRejected(
       validRequest({

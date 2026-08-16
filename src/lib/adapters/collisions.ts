@@ -1,7 +1,9 @@
+import { SERVER_RADIUS_METERS } from "../validation";
+import { socrataHeaders } from "./socrata";
+
 const COLLISIONS_ENDPOINT =
   "https://data.cityofnewyork.us/resource/h9gi-nx95.json";
 
-const COLLISION_RADIUS_METERS = 50;
 const COLLISION_DATE_START = "2025-01-01T00:00:00.000";
 const COLLISION_DATE_END = "2026-01-01T00:00:00.000";
 const COLLISION_LIMIT = 5000;
@@ -82,6 +84,13 @@ export interface FetchCollisionsOptions {
   signal?: AbortSignal;
 }
 
+/**
+ * The query radius is ADR-0003's analysis boundary itself — the same value
+ * the report reports as `boundary.radiusMeters` — so it reads the canonical
+ * `SERVER_RADIUS_METERS` rather than redeclaring 50. A local copy could drift
+ * and silently produce a report whose stated boundary is not the boundary
+ * that was queried.
+ */
 export function buildCollisionQueryUrl(coordinate: {
   latitude: number;
   longitude: number;
@@ -90,15 +99,10 @@ export function buildCollisionQueryUrl(coordinate: {
   url.searchParams.set("$select", COLLISION_FIELDS.join(","));
   url.searchParams.set(
     "$where",
-    `within_circle(location, ${coordinate.latitude}, ${coordinate.longitude}, ${COLLISION_RADIUS_METERS}) AND crash_date >= '${COLLISION_DATE_START}' AND crash_date < '${COLLISION_DATE_END}' AND location IS NOT NULL`,
+    `within_circle(location, ${coordinate.latitude}, ${coordinate.longitude}, ${SERVER_RADIUS_METERS}) AND crash_date >= '${COLLISION_DATE_START}' AND crash_date < '${COLLISION_DATE_END}' AND location IS NOT NULL`,
   );
   url.searchParams.set("$limit", String(COLLISION_LIMIT));
   return url.toString();
-}
-
-function fetchHeaders(): HeadersInit | undefined {
-  const token = process.env.SOCRATA_APP_TOKEN;
-  return token ? { "X-App-Token": token } : undefined;
 }
 
 export async function fetchCollisions(
@@ -110,7 +114,7 @@ export async function fetchCollisions(
   let response: Response;
   try {
     response = await fetch(url, {
-      headers: fetchHeaders(),
+      headers: socrataHeaders(),
       signal: options?.signal,
     });
   } catch {

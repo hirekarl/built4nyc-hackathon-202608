@@ -12,19 +12,21 @@ import type {
 } from "../../../../types/report";
 
 /**
- * Builds the exact contract error body for a given code, defaulting
- * `retryable` to `false` for every validation code — `source_failure` is the
- * only code that ever sets `retryable: true`.
+ * Builds the exact contract error body for a given code.
+ *
+ * `retryable` is DERIVED from the code rather than passed in: `source_failure`
+ * is the only retryable code, and a caller must not be able to contradict
+ * that. Retrying a validation error would never succeed, so advertising one
+ * as retryable is a client-visible lie the compiler should prevent.
  */
 function errorResponse(
   status: number,
   code: IntersectionReportValidationErrorCode | "source_failure",
   message: string,
-  retryable: boolean,
 ): Response {
   const body = {
     schemaVersion: "1",
-    error: { code, message, retryable },
+    error: { code, message, retryable: code === "source_failure" },
   } as IntersectionReportErrorResponse;
   return Response.json(body, { status });
 }
@@ -38,13 +40,12 @@ export async function POST(request: Request): Promise<Response> {
       400,
       "invalid_request",
       "The request body must be valid JSON.",
-      false,
     );
   }
 
   const validation = validateReportRequest(body);
   if (!validation.ok) {
-    return errorResponse(400, validation.code, validation.message, false);
+    return errorResponse(400, validation.code, validation.message);
   }
 
   let resolved;
@@ -56,7 +57,6 @@ export async function POST(request: Request): Promise<Response> {
         503,
         "source_failure",
         "The NYC Street Centerline data source is temporarily unavailable.",
-        true,
       );
     }
     throw error;
@@ -67,7 +67,6 @@ export async function POST(request: Request): Promise<Response> {
       400,
       "intersection_not_found",
       "The selected intersection could not be resolved against the official street centerline data.",
-      false,
     );
   }
 

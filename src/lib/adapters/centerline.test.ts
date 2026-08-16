@@ -369,6 +369,56 @@ describe("resolveIntersectionSelection — ADR-0003 security boundary", () => {
   });
 });
 
+describe("resolveIntersectionSelection — coordinate match tolerance", () => {
+  const officialRows = [
+    OFFICIAL_ROW_183093,
+    OFFICIAL_ROW_5AVE,
+    OFFICIAL_ROW_AVE_OF_AMERICAS,
+  ];
+
+  it("still matches a submitted coordinate that differs by a sub-centimetre float wobble", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(response({ json: officialRows })),
+    );
+
+    // ~5e-8 degrees is well under a centimetre — the scale at which two
+    // serializations of the same stored double could ever disagree.
+    const resolved = await resolveIntersectionSelection(
+      submittedSelection({
+        coordinate: {
+          latitude: OFFICIAL_COORDINATE.latitude + 5e-8,
+          longitude: OFFICIAL_COORDINATE.longitude - 5e-8,
+        },
+      }),
+    );
+
+    expect(resolved).not.toBeNull();
+    // The OFFICIAL coordinate is returned, never the submitted one.
+    expect(resolved?.coordinate).toEqual(OFFICIAL_COORDINATE);
+  });
+
+  it("still rejects a coordinate offset by a metre, so the ADR-0003 boundary is not a free-form radius", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(response({ json: officialRows })),
+    );
+
+    // ~1e-5 degrees is roughly a metre — far outside any float round-trip
+    // wobble, so this is a different point and must not resolve.
+    const resolved = await resolveIntersectionSelection(
+      submittedSelection({
+        coordinate: {
+          latitude: OFFICIAL_COORDINATE.latitude + 1e-5,
+          longitude: OFFICIAL_COORDINATE.longitude,
+        },
+      }),
+    );
+
+    expect(resolved).toBeNull();
+  });
+});
+
 describe("resolveIntersectionSelection — stale or unmatched selection", () => {
   it("resolves to null when the submitted coordinate matches nothing in current live data", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response({ json: [] })));
@@ -395,6 +445,27 @@ describe("resolveIntersectionSelection — upstream source failure", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(response({ json: { unexpected: "shape" } })),
+    );
+
+    await expect(
+      resolveIntersectionSelection(submittedSelection()),
+    ).rejects.toBeInstanceOf(CenterlineSourceError);
+  });
+
+  it("throws a CenterlineSourceError (never a bare SyntaxError) when a 200 response carries a malformed JSON body", async () => {
+    // A truncated/malformed body makes `response.json()` reject with a plain
+    // SyntaxError. Unwrapped, that escapes route.ts's
+    // `instanceof CenterlineSourceError` check and surfaces as a 500 instead
+    // of the contract's 503 `source_failure`.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi
+          .fn()
+          .mockRejectedValue(new SyntaxError("Unexpected end of JSON input")),
+      } as unknown as Response),
     );
 
     await expect(

@@ -1,11 +1,12 @@
 import type { MultiPolygon, Polygon } from "geojson";
 import { circleIntersectsPolygon, createCircleFeature } from "../geometry";
 import type { GeographicCoordinate } from "../geometry";
+import { SERVER_RADIUS_METERS } from "../validation";
+import { socrataHeaders } from "./socrata";
+import type { PriorityZoneResult } from "../../types/report";
 
 const PRIORITY_ZONES_ENDPOINT =
   "https://data.cityofnewyork.us/resource/qzji-nvbd.json";
-
-const PRIORITY_ZONE_RADIUS_METERS = 50;
 
 const PRIORITY_ZONE_FIELDS = [
   "the_geom",
@@ -14,8 +15,12 @@ const PRIORITY_ZONE_FIELDS = [
   "shape_area",
 ] as const;
 
-export type PriorityZoneResult =
-  { status: "matched" } | { status: "not_matched" } | { status: "unavailable" };
+// Re-exported, not redeclared. `report.ts` imports this name from here and
+// assigns it onto `IntersectionReport.priorityZone`, which is typed from the
+// canonical declaration in `../../types/report`. A second structurally-equal
+// declaration compiled only by coincidence and would have broken silently the
+// moment either side gained a field.
+export type { PriorityZoneResult };
 
 interface PriorityZoneRow {
   the_geom?: unknown;
@@ -34,11 +39,6 @@ let cachedZonesPromise: Promise<(Polygon | MultiPolygon)[]> | null = null;
  */
 export function __resetPriorityZoneCache(): void {
   cachedZonesPromise = null;
-}
-
-function fetchHeaders(): HeadersInit | undefined {
-  const token = process.env.SOCRATA_APP_TOKEN;
-  return token ? { "X-App-Token": token } : undefined;
 }
 
 function buildPriorityZoneQueryUrl(): string {
@@ -61,7 +61,7 @@ function isPolygonOrMultiPolygon(
 async function fetchPriorityZones(): Promise<(Polygon | MultiPolygon)[]> {
   const url = buildPriorityZoneQueryUrl();
 
-  const response = await fetch(url, { headers: fetchHeaders() });
+  const response = await fetch(url, { headers: socrataHeaders() });
 
   if (!response.ok) {
     throw new Error(`Priority Zones request failed (${response.status}).`);
@@ -108,7 +108,9 @@ export async function resolvePriorityZone(
     return { status: "unavailable" };
   }
 
-  const circle = createCircleFeature(coordinate, PRIORITY_ZONE_RADIUS_METERS);
+  // ADR-0003's analysis boundary, read from its canonical constant — this is
+  // the same circle the report states as `boundary.radiusMeters`.
+  const circle = createCircleFeature(coordinate, SERVER_RADIUS_METERS);
   const matched = zones.some((zone) => circleIntersectsPolygon(circle, zone));
 
   return { status: matched ? "matched" : "not_matched" };
