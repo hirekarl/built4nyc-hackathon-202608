@@ -29,8 +29,16 @@ jobs:
           npm run format:check
           npm run format:md:check
 
+      # vitest does not type-check and eslint does not either, so type errors
+      # in test files reach the build stage otherwise.
+      - name: Typecheck
+        run: npm run typecheck
+
       - name: Test with coverage
         run: npm test
+
+      - name: Build
+        run: npm run build
 
   e2e:
     runs-on: ubuntu-latest
