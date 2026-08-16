@@ -659,12 +659,12 @@ dd {
     font-size: 10.5pt;
   }
 
-  .print-report h2 {
+  .print-report h1 {
     margin: 0;
     font-size: 22pt;
   }
 
-  .print-report h3 {
+  .print-report h2 {
     margin: 0;
     font-size: 13pt;
   }
