@@ -380,7 +380,7 @@ Gated on Phase 1 Step 1.9's `docs/contract.md` — not on the PRD §9 placeholde
 
 Gated on Phase 1 Step 1.9 **and** Phase 2 Step 2.7 both merged.
 
-- [ ] **3.1 — Wire frontend to the real backend, remove mock**
+- [x] **3.1 — Wire frontend to the real backend, remove mock**
 
   ```text
   [SPEC]
@@ -396,7 +396,7 @@ Gated on Phase 1 Step 1.9 **and** Phase 2 Step 2.7 both merged.
   1. Reusing Step 1.5's already-built state machine unmodified > rebuilding fetch/state logic during integration.
   ```
 
-- [ ] **3.2 — Reconcile contract drift**
+- [x] **3.2 — Reconcile contract drift**
 
   ```text
   [SPEC]
@@ -412,7 +412,7 @@ Gated on Phase 1 Step 1.9 **and** Phase 2 Step 2.7 both merged.
   1. Single enum/type definition shared by mock and live data > divergent ad hoc mappings per call site.
   ```
 
-- [ ] **3.3 — End-to-end happy-path Playwright flow**
+- [x] **3.3 — End-to-end happy-path Playwright flow**
 
   ```text
   [SPEC]
@@ -444,7 +444,7 @@ Gated on Phase 1 Step 1.9 **and** Phase 2 Step 2.7 both merged.
   1. Honest partial-status UX verified end-to-end > relying solely on Phase 2's unit-level partial-status test.
   ```
 
-- [ ] **3.5 — Verify both PRD §12 acceptance fixtures end-to-end with exact numbers**
+- [x] **3.5 — Verify both PRD §12 acceptance fixtures end-to-end with exact numbers**
 
   ```text
   [SPEC]
