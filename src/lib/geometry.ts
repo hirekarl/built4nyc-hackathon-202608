@@ -1,4 +1,5 @@
-import type { Feature, Polygon } from "geojson";
+import type { Feature, MultiPolygon, Polygon } from "geojson";
+import booleanIntersects from "@turf/boolean-intersects";
 
 const EARTH_RADIUS_METERS = 6_371_008.8;
 const CIRCLE_SEGMENTS = 64;
@@ -68,4 +69,19 @@ export function createCircleFeature(
       coordinates: [ring],
     },
   };
+}
+
+/**
+ * Tests whether a 50m circle (as produced by createCircleFeature) shares any
+ * point — including a single touching vertex — with the given polygon or
+ * multipolygon. This is a real geometry-intersection operation (not a
+ * SoQL `within_polygon` spatial operator), so it is suited to comparing the
+ * circle against arbitrary cached polygons (e.g. Priority Zones) rather than
+ * relying on a data source's own spatial query support.
+ */
+export function circleIntersectsPolygon(
+  circle: CircleFeature,
+  polygon: Polygon | MultiPolygon,
+): boolean {
+  return booleanIntersects(circle, polygon);
 }
