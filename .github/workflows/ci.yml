@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
 
+# A new push to the same branch supersedes the run already in flight.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   ci:
     runs-on: ubuntu-latest
@@ -39,6 +44,16 @@ jobs:
 
       - name: Test with coverage
         run: npm test
+
+      # fail_ci_if_error stays false on purpose: a Codecov outage must not
+      # red a merge gate. The coverage threshold itself is enforced by the
+      # step above, not by this upload.
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage/lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
 
       - name: Build
         run: npm run build

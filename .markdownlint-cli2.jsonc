@@ -7,9 +7,16 @@
   // to a 3-character minimum width, which doesn't match any single MD060 style exactly
   // (e.g. empty cells get two spaces, not one) — Prettier's table formatting is the
   // source of truth here, not this rule.
+  // MD033 (no-inline-html) is narrowed rather than disabled: the README needs <img> to
+  // size the screenshot and the contributor avatars, and <br> to stack an avatar above
+  // a name inside a table cell. Neither has a CommonMark equivalent. Every other inline
+  // HTML element stays an error.
   "config": {
     "MD013": false,
-    "MD060": false
+    "MD060": false,
+    "MD033": {
+      "allowed_elements": ["img", "br"]
+    }
   },
   "globs": ["**/*.md"],
   "ignores": ["node_modules", "docs/private"]

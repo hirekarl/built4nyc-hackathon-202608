@@ -10,7 +10,10 @@ export default defineConfig({
     exclude: ["**/node_modules/**", "e2e/**"],
     coverage: {
       provider: "v8",
-      reporter: ["text", "html"],
+      // `lcov` is what the Codecov upload step in CI ingests; `json-summary`
+      // writes coverage/coverage-summary.json for anything that needs the
+      // numbers programmatically. `text` and `html` stay for local use.
+      reporter: ["text", "html", "lcov", "json-summary"],
       include: ["src/**"],
       exclude: ["src/types/report.ts", "**/*.d.ts", "**/*.test.{ts,tsx}"],
       thresholds: {
