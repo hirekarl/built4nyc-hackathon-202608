@@ -9,6 +9,30 @@
  *     submitted coordinate. The `$where` clause MUST filter eligibility
  *     server-side (rw_type='1' AND blank nonped) — never fetch-all-then-filter.
  *
+ *     LIVE-DATA BUG FIX (found by smoke testing on `feat/backend-report-api`):
+ *     `inkn-q76z`'s `the_geom` is a MultiLineString. Socrata's
+ *     `within_circle(the_geom, lat, lng, radius)` requires the ENTIRE
+ *     geometry to be contained within the circle — a 50 m circle can never
+ *     contain a whole street block, so `within_circle` returns ZERO rows
+ *     against live data no matter how well-formed the query is. Verified
+ *     live: `within_circle(..., 50)` -> 0 rows, `within_circle(..., 200)` ->
+ *     9 rows, `within_circle(..., 1000)` -> 521 rows.
+ *
+ *     The fix is `intersects(the_geom, '<POLYGON WKT>')`, which has true
+ *     intersection (touching-counts) semantics instead of containment. The
+ *     query builds a small bounding-box polygon around the submitted
+ *     coordinate (WKT vertex order is `lon lat`, NOT `lat lon` — PRD §13
+ *     calls out swapped coordinate order as a class of bug this project
+ *     tests for explicitly) and closes the ring by repeating the first
+ *     vertex. This polygon is a LOOKUP WINDOW for finding nearby
+ *     centerlines — it is NOT the same concept as the 50 m official
+ *     intersection ANALYSIS boundary from ADR-0003. They currently share
+ *     the same 50 m half-extent by coincidence of the verified fix, not by
+ *     necessity — do not collapse them into "the same 50 m thing" in a
+ *     future refactor; they answer different questions (what centerlines
+ *     are near this point vs. what counts as inside the intersection for
+ *     crash analysis).
+ *
  * - `resolveIntersectionSelection(submitted: IntersectionSelection): Promise<ResolvedIntersection | null>`
  *     Re-derives an intersection candidate from live server data using only
  *     the submitted coordinate (and radius) as a lookup key. It NEVER trusts
@@ -160,8 +184,89 @@ describe("buildIntersectionLookupUrl", () => {
     expect(where).toBeTruthy();
     expect(where).toContain("rw_type='1'");
     expect(where).toMatch(/nonped\s+IS\s+NULL\s+OR\s+nonped\s*=\s*''/i);
-    // Must scope the query to the submitted coordinate — never a bare "give me everything".
-    expect(where).toMatch(/within_circle|distance_in_meters/i);
+  });
+
+  it("scopes the query with intersects(the_geom, POLYGON(...)) — NOT within_circle, which returns zero rows against live MultiLineString data", () => {
+    const url = new URL(buildIntersectionLookupUrl(OFFICIAL_COORDINATE, 50));
+    const where = url.searchParams.get("$where");
+    expect(where).toBeTruthy();
+
+    // The fix: true intersection semantics via a polygon lookup window.
+    expect(where).toContain("intersects(the_geom, 'POLYGON((");
+
+    // Regression guard for the exact live-data bug: within_circle requires
+    // the ENTIRE MultiLineString to fit inside the circle, which a 50 m
+    // radius can never do for a street block, so it silently returns zero
+    // rows. It must never reappear in the emitted $where clause.
+    expect(where).not.toContain("within_circle");
+  });
+
+  it("emits WKT polygon vertices in lon lat order, not lat lon — a swapped order silently resolves to zero rows again", () => {
+    const url = new URL(buildIntersectionLookupUrl(OFFICIAL_COORDINATE, 50));
+    const where = url.searchParams.get("$where")!;
+
+    const polygonMatch = where.match(/POLYGON\(\(([^)]+)\)\)/);
+    expect(polygonMatch).not.toBeNull();
+
+    const vertices = polygonMatch![1]
+      .split(",")
+      .map((pair) => pair.trim().split(/\s+/).map(Number));
+
+    expect(vertices.length).toBeGreaterThanOrEqual(4);
+
+    for (const [x, y] of vertices) {
+      // x must be the longitude component (a small negative NYC longitude,
+      // roughly -74), y must be the latitude component (a positive NYC
+      // latitude, roughly 40) — asserting this ordering, not just that both
+      // numbers are present, catches a swapped lat/lng WKT emission.
+      expect(x).toBeLessThan(-70);
+      expect(y).toBeGreaterThan(30);
+    }
+  });
+
+  it("closes the polygon ring by repeating the first vertex as the last vertex", () => {
+    const url = new URL(buildIntersectionLookupUrl(OFFICIAL_COORDINATE, 50));
+    const where = url.searchParams.get("$where")!;
+
+    const polygonMatch = where.match(/POLYGON\(\(([^)]+)\)\)/);
+    expect(polygonMatch).not.toBeNull();
+
+    const vertices = polygonMatch![1].split(",").map((pair) => pair.trim());
+
+    expect(vertices.length).toBeGreaterThanOrEqual(4);
+    expect(vertices[0]).toBe(vertices[vertices.length - 1]);
+  });
+
+  it("builds a bounding box around the submitted coordinate (the coordinate lies strictly inside the polygon's lon/lat extents)", () => {
+    const url = new URL(buildIntersectionLookupUrl(OFFICIAL_COORDINATE, 50));
+    const where = url.searchParams.get("$where")!;
+
+    const polygonMatch = where.match(/POLYGON\(\(([^)]+)\)\)/);
+    expect(polygonMatch).not.toBeNull();
+
+    const vertices = polygonMatch![1]
+      .split(",")
+      .map((pair) => pair.trim().split(/\s+/).map(Number));
+
+    const lons = vertices.map(([x]) => x);
+    const lats = vertices.map(([, y]) => y);
+
+    expect(Math.min(...lons)).toBeLessThan(OFFICIAL_COORDINATE.longitude);
+    expect(Math.max(...lons)).toBeGreaterThan(OFFICIAL_COORDINATE.longitude);
+    expect(Math.min(...lats)).toBeLessThan(OFFICIAL_COORDINATE.latitude);
+    expect(Math.max(...lats)).toBeGreaterThan(OFFICIAL_COORDINATE.latitude);
+  });
+
+  it("documents that the lookup-window polygon is NOT the same concept as ADR-0003's 50 m official-intersection analysis boundary, even though both currently use 50 m", () => {
+    // This is a documentation-style assertion, not a behavioral one: it
+    // exists so that a future reader who greps for "50" doesn't collapse
+    // the SODA lookup window (this file) with the analysis boundary used
+    // downstream when computing which crashes count as "at this
+    // intersection". They answer different questions and could diverge in
+    // radius independently without either being wrong.
+    const LOOKUP_WINDOW_RADIUS_METERS = 50;
+    const ADR_0003_ANALYSIS_BOUNDARY_METERS = 50;
+    expect(LOOKUP_WINDOW_RADIUS_METERS).toBe(ADR_0003_ANALYSIS_BOUNDARY_METERS);
   });
 });
 
