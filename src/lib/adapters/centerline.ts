@@ -3,6 +3,7 @@ import {
   groupIntersectionCandidates,
   normalizeCenterlineRows,
 } from "../centerline-client";
+import { socrataHeaders } from "./socrata";
 
 const CENTERLINE_ENDPOINT =
   "https://data.cityofnewyork.us/resource/inkn-q76z.json";
@@ -22,7 +23,16 @@ const CENTERLINE_FIELDS = [
   "globalid",
 ] as const;
 
-const COORDINATE_MATCH_EPSILON = 1e-9;
+// ~1.1 cm at NYC's latitude. Both sides of this comparison trace back to the
+// same stored `the_geom` doubles and survive JSON round-tripping exactly, so
+// today an exact match would also work — the tolerance is insurance against a
+// future serialization difference between the viewport query the client used
+// and the polygon-intersects query the server uses, not a known defect.
+//
+// It stays this tight on purpose: ADR-0003's boundary is only meaningful if
+// the submitted coordinate identifies ONE official node. At a centimetre, a
+// falsified coordinate must effectively BE a real node to pass.
+const COORDINATE_MATCH_EPSILON = 1e-7;
 
 // Metres per degree of latitude is effectively constant across NYC's small
 // latitude range. Metres per degree of longitude shrinks by cos(latitude) —
@@ -89,11 +99,6 @@ export function buildIntersectionLookupUrl(
   return url.toString();
 }
 
-function fetchHeaders(): HeadersInit | undefined {
-  const token = process.env.SOCRATA_APP_TOKEN;
-  return token ? { "X-App-Token": token } : undefined;
-}
-
 function coordinatesMatch(
   a: { longitude: number; latitude: number },
   b: { latitude: number; longitude: number },
@@ -111,7 +116,7 @@ export async function resolveIntersectionSelection(
 
   let response: Response;
   try {
-    response = await fetch(url, { headers: fetchHeaders() });
+    response = await fetch(url, { headers: socrataHeaders() });
   } catch (error) {
     throw new CenterlineSourceError(
       `NYC Street Centerline request failed: ${
@@ -126,7 +131,19 @@ export async function resolveIntersectionSelection(
     );
   }
 
-  const rows: unknown = await response.json();
+  // A malformed body on an HTTP 200 rejects with a plain SyntaxError. It must
+  // be wrapped here, or it escapes the caller's `instanceof
+  // CenterlineSourceError` check and surfaces as a 500 instead of the
+  // contract's 503 `source_failure`.
+  let rows: unknown;
+  try {
+    rows = await response.json();
+  } catch {
+    throw new CenterlineSourceError(
+      "NYC Street Centerline returned a malformed response body.",
+    );
+  }
+
   if (!Array.isArray(rows)) {
     throw new CenterlineSourceError(
       "NYC Street Centerline returned an invalid response.",

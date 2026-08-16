@@ -37,9 +37,22 @@ function fail(
 }
 
 const RAW_QUERY_KEYS = new Set(["$where", "$select", "query", "soql"]);
+
+/**
+ * These patterns are applied to EVERY string in the payload, not only to the
+ * `RAW_QUERY_KEYS` values — defense in depth, since the point is that no
+ * client-supplied string is ever spliced into a query anywhere.
+ *
+ * That breadth is why the SELECT pattern requires an actual SoQL shape (a
+ * `select` … `from` pair on word boundaries) rather than the bare `select `
+ * substring. Unanchored, `select ` would reject any legitimate intersection
+ * whose official street name happened to contain those seven characters,
+ * returning `raw_query_not_allowed` for a request with no injection risk at
+ * all.
+ */
 const RAW_QUERY_STRING_PATTERNS: RegExp[] = [
   /within_circle\(/i,
-  /select\s/i,
+  /\bselect\b[\s\S]{0,120}?\bfrom\b/i,
   /--/,
 ];
 

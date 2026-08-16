@@ -322,6 +322,21 @@ describe("aggregateCollisionMetrics — malformed numeric propagation (null, nev
     expect(result.peopleInjured).toBeNull();
   });
 
+  it("nulls peopleInjured for a whitespace-only string (' ') — Number(' ') is 0, which would fabricate a safety metric", () => {
+    const result = aggregateCollisionMetrics([
+      collisionRow({ number_of_persons_injured: " " }),
+    ]);
+    expect(result.peopleInjured).not.toBe(0);
+    expect(result.peopleInjured).toBeNull();
+  });
+
+  it("nulls peopleInjured for a tab/newline-only string", () => {
+    const result = aggregateCollisionMetrics([
+      collisionRow({ number_of_persons_injured: "\t\n" }),
+    ]);
+    expect(result.peopleInjured).toBeNull();
+  });
+
   it("nulls peopleInjured for an explicit null value", () => {
     const result = aggregateCollisionMetrics([
       collisionRow({ number_of_persons_injured: null }),
