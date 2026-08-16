@@ -164,7 +164,7 @@ No request or success field is optional. The TypeScript definitions supersede an
 
 Both PRD §12 acceptance fixtures were driven through the real `POST /api/reports/intersection` route against live NYC Open Data on 2026-08-15. **No shape drift exists**: every field path, enum value, and nullability in the live 200 body matches this document and `src/types/report.ts` exactly. Neither side required a fix.
 
-**Every deterministic metric is identical between the Phase 1 mock and the live route**, for both fixtures — the diff-of-zero check this step exists to prove:
+**Every metric the live route returns matches its PRD §12 documented value exactly**, for both fixtures — the diff-of-zero check this step exists to prove. The comparison is live-versus-PRD, not live-versus-mock: the Phase 1 mocks leave several of these fields `null` (see the differences table below), so they are not a valid baseline for every field.
 
 | Fixture | Crashes | Injured | Killed | Pedestrians | Cyclists | Motorists |
 | --- | --: | --: | --: | --- | --- | --- |
@@ -183,7 +183,9 @@ The mock fixtures in `src/lib/mocks/report.mock.ts` differ from the live respons
 | Fixture 1 `selection.physicalIds` | `["183093"]` | `["23415","1940","183093","1941"]` | Every contributing centerline segment at the node is returned, not just the one the client happened to submit. |
 | Fixture 2 `selection.displayName` | `E 42 ST at PARK AVE` | `PARK AVE at E 42 ST` | Street order follows the server's normalization, not the client's submitted order. |
 | Fixture 2 `selection.physicalIds` | `["73419","148625"]` | `["148625","73419","73416"]` | Same re-derivation as fixture 1. |
-| Fixture 2 `priorityZone.status` / `status` | `unavailable` / `partial` | `matched` / `complete` | The mock deliberately encodes a degraded-source case so the panel's `partial` state stays testable. Live, that intersection genuinely overlaps a Priority Zone and all three sources resolve. |
+| **Both** fixtures' `priorityZone.status` / `status` | `unavailable` / `partial` | `matched` / `complete` | The mocks deliberately encode a degraded-source case so the panel's `partial` state stays testable. Live, both intersections genuinely overlap a Priority Zone and all three sources resolve. |
+| Fixture 1 `metrics.unspecifiedFactors` | `null` | `2` | The mock predates the aggregation logic and leaves the field unpopulated; `null` here means "not computed by the mock", not "missing upstream". |
+| Fixture 2 `metrics.pedestriansKilled`, `cyclistsKilled`, `motoristsInjured`, `motoristsKilled`, `unspecifiedFactors` | all `null` | `0`, `0`, `0`, `0`, `6` | Same cause. Note this is exactly the null-versus-zero distinction the contract draws: live zeros are real counted zeros, while the mock's `null` means the value was never computed. |
 
 Because the UI renders `report.selection.displayName` from the response, the locked name shown in the report can legitimately differ from the label hovered on the map. That is the official record asserting itself over client-submitted text, which is the ADR-0003 security boundary working as designed.
 
