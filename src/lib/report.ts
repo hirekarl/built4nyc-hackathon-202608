@@ -1,7 +1,16 @@
-import type { CollisionRow } from "./adapters/collisions";
+import type { CollisionFetchResult, CollisionRow } from "./adapters/collisions";
+import type { ResolvedIntersection } from "./adapters/centerline";
+import type { PriorityZoneResult } from "./adapters/priority-zones";
+import {
+  SERVER_PERIOD_END,
+  SERVER_PERIOD_START,
+  SERVER_RADIUS_METERS,
+} from "./validation";
 import type {
   ContributingFactorMetric,
+  IntersectionReport,
   IntersectionReportMetrics,
+  ReportSource,
 } from "../types/report";
 
 /**
@@ -136,5 +145,184 @@ export function aggregateCollisionMetrics(
     motoristsKilled,
     contributingFactors,
     unspecifiedFactors,
+  };
+}
+
+const COLLISION_UNAVAILABLE_LIMITATION =
+  "Motor Vehicle Collisions - Crashes is unavailable, so collision metrics could not be computed.";
+const PRIORITY_ZONE_UNAVAILABLE_LIMITATION =
+  "VZV Priority Zones or Areas is unavailable, so boundary overlap could not be checked.";
+const ON_STREET_NAME_NOTE =
+  "The matched crash records had coordinates, so missing street labels do not change the coordinate-based counts.";
+
+const NULL_METRICS: IntersectionReportMetrics = {
+  crashes: null,
+  peopleInjured: null,
+  peopleKilled: null,
+  pedestriansInjured: null,
+  pedestriansKilled: null,
+  cyclistsInjured: null,
+  cyclistsKilled: null,
+  motoristsInjured: null,
+  motoristsKilled: null,
+  contributingFactors: null,
+  unspecifiedFactors: null,
+};
+
+/**
+ * "complete" only when both the collision and Priority Zone sources are
+ * healthy — otherwise exactly ONE "partial" status regardless of how many
+ * sources degraded simultaneously (docs/contract.md).
+ */
+function computeStatus(
+  collisions: CollisionFetchResult,
+  priorityZone: PriorityZoneResult,
+): "complete" | "partial" {
+  const collisionsAvailable = collisions.status === "available";
+  const priorityZoneAvailable = priorityZone.status !== "unavailable";
+  return collisionsAvailable && priorityZoneAvailable ? "complete" : "partial";
+}
+
+function buildSummary(collisions: CollisionFetchResult): string {
+  if (collisions.status !== "available") {
+    return "Crash metrics are unavailable because a required source could not be retrieved.";
+  }
+  const crashes = collisions.rows.length;
+  if (crashes === 0) {
+    return "No reported crashes matched this boundary and period.";
+  }
+  return `${crashes} reported crashes matched this boundary and period.`;
+}
+
+/**
+ * Data-quality limitation + companion note for rows missing
+ * `on_street_name`, computed only when collisions are available and the
+ * missing count is neither 0 (nothing to disclose) nor the full row count
+ * (that would instead be a collision-source outage, not a labeling gap).
+ */
+function buildDataQualityDisclosure(collisions: CollisionFetchResult): {
+  limitation: string | null;
+  note: string | null;
+} {
+  if (collisions.status !== "available") {
+    return { limitation: null, note: null };
+  }
+  const totalCount = collisions.rows.length;
+  const missingCount = collisions.rows.filter(
+    (row) => !row.on_street_name,
+  ).length;
+  if (missingCount === 0 || missingCount === totalCount) {
+    return { limitation: null, note: null };
+  }
+  return {
+    limitation: `${missingCount} of ${totalCount} crash records are missing on_street_name.`,
+    note: ON_STREET_NAME_NOTE,
+  };
+}
+
+function buildLimitations(
+  collisions: CollisionFetchResult,
+  priorityZone: PriorityZoneResult,
+): string[] {
+  const limitations: string[] = [];
+  if (collisions.status !== "available") {
+    limitations.push(COLLISION_UNAVAILABLE_LIMITATION);
+  }
+  if (priorityZone.status === "unavailable") {
+    limitations.push(PRIORITY_ZONE_UNAVAILABLE_LIMITATION);
+  }
+  const { limitation } = buildDataQualityDisclosure(collisions);
+  if (limitation) {
+    limitations.push(limitation);
+  }
+  return limitations;
+}
+
+function buildNotes(collisions: CollisionFetchResult): string[] {
+  const { note } = buildDataQualityDisclosure(collisions);
+  return note ? [note] : [];
+}
+
+function buildSources(
+  collisions: CollisionFetchResult,
+  priorityZone: PriorityZoneResult,
+  generatedAt: string,
+): ReportSource[] {
+  return [
+    {
+      name: "NYC Street Centerline",
+      datasetId: "inkn-q76z",
+      url: "https://data.cityofnewyork.us/City-Government/Centerline/3mf9-qshr",
+      role: "selection_geometry",
+      retrievalStatus: "available",
+      retrievedAt: generatedAt,
+      queryDescription: "Eligible street geometry is loaded by map viewport.",
+    },
+    {
+      name: "Motor Vehicle Collisions - Crashes",
+      datasetId: "h9gi-nx95",
+      url: "https://data.cityofnewyork.us/Public-Safety/Motor-Vehicle-Collisions-Crashes/h9gi-nx95",
+      role: "collision_metrics",
+      retrievalStatus: collisions.status,
+      retrievedAt:
+        collisions.status === "available" ? collisions.retrievedAt : null,
+      queryDescription:
+        "Crash records are queried within 50 meters for calendar year 2025.",
+    },
+    {
+      name: "VZV Priority Zones or Areas",
+      datasetId: "qzji-nvbd",
+      url: "https://data.cityofnewyork.us/Transportation/VZV-Priority-Zones-or-Areas/qzji-nvbd",
+      role: "priority_context",
+      retrievalStatus:
+        priorityZone.status === "unavailable" ? "unavailable" : "available",
+      retrievedAt: priorityZone.status === "unavailable" ? null : generatedAt,
+      queryDescription:
+        "Five multipolygons are fetched and checked for boundary overlap.",
+    },
+  ];
+}
+
+/**
+ * Assembles the full, deterministic `IntersectionReport` from the resolved
+ * selection and the two independently fetched sources (Step 2.4's
+ * collisions and Step 2.6's Priority Zone result). Pure: `generatedAt` and
+ * `reportId` are injected, never read/generated internally, so identical
+ * input always produces a deeply equal output.
+ */
+export function assembleIntersectionReport(input: {
+  selection: ResolvedIntersection;
+  collisions: CollisionFetchResult;
+  priorityZone: PriorityZoneResult;
+  generatedAt: string;
+  reportId: string;
+}): IntersectionReport {
+  const { selection, collisions, priorityZone, generatedAt, reportId } = input;
+
+  const metrics =
+    collisions.status === "available"
+      ? aggregateCollisionMetrics(collisions.rows)
+      : NULL_METRICS;
+
+  return {
+    schemaVersion: "1",
+    reportId,
+    generatedAt,
+    status: computeStatus(collisions, priorityZone),
+    summary: buildSummary(collisions),
+    selection: {
+      kind: "intersection",
+      ...selection,
+    },
+    boundary: { kind: "circle", radiusMeters: SERVER_RADIUS_METERS },
+    period: {
+      startInclusive: SERVER_PERIOD_START,
+      endExclusive: SERVER_PERIOD_END,
+    },
+    metrics,
+    priorityZone,
+    limitations: buildLimitations(collisions, priorityZone),
+    notes: buildNotes(collisions),
+    sources: buildSources(collisions, priorityZone, generatedAt),
   };
 }

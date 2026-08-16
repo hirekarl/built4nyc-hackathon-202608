@@ -58,9 +58,17 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { aggregateCollisionMetrics } from "./report";
-import type { CollisionRow } from "./adapters/collisions";
-import type { IntersectionReportMetrics } from "../types/report";
+import {
+  aggregateCollisionMetrics,
+  assembleIntersectionReport,
+} from "./report";
+import type { CollisionFetchResult, CollisionRow } from "./adapters/collisions";
+import type { ResolvedIntersection } from "./adapters/centerline";
+import type {
+  IntersectionReport,
+  IntersectionReportMetrics,
+  ReportSource,
+} from "../types/report";
 
 function collisionRow(overrides: Partial<CollisionRow> = {}): CollisionRow {
   return {
@@ -512,5 +520,441 @@ describe("aggregateCollisionMetrics — purity and determinism", () => {
     aggregateCollisionMetrics(rows);
 
     expect(JSON.parse(JSON.stringify(rows))).toEqual(snapshot);
+  });
+});
+
+/**
+ * TDD red for Phase 2 Step 2.7 — full report assembly.
+ *
+ * This block specifies the API surface `builder` must add to
+ * `src/lib/report.ts`:
+ *
+ *   export function assembleIntersectionReport(input: {
+ *     selection: ResolvedIntersection;
+ *     collisions: CollisionFetchResult;
+ *     priorityZone: PriorityZoneResult;
+ *     generatedAt: string; // injected, never read from Date internally
+ *     reportId: string;    // injected, never generated internally
+ *   }): IntersectionReport
+ *
+ * Pure and deterministic: same input -> deeply equal output, no wall-clock
+ * or randomness read inside the function (mirrors the purity requirement
+ * already enforced on `aggregateCollisionMetrics`).
+ *
+ * DOCUMENTED ASSEMBLY RULES this test file pins down (continuing the exact
+ * conventions already shown in `src/lib/mocks/report.mock.ts`, which the
+ * frontend already renders against):
+ *
+ * 1. STATUS — "complete" only when collisions.status === "available" AND
+ *    priorityZone.status !== "unavailable"; otherwise "partial". Both
+ *    sources degrading simultaneously still yields exactly one "partial"
+ *    status (never a compounded/duplicated state), carrying every
+ *    applicable limitation.
+ *
+ * 2. METRICS — collisions.status === "available" -> metrics =
+ *    aggregateCollisionMetrics(collisions.rows). collisions.status ===
+ *    "unavailable" -> every metric field is `null` (never `0`).
+ *
+ * 3. SUMMARY (deterministic, matches the exact wording already used in the
+ *    Phase 1 mocks):
+ *    - collisions unavailable ->
+ *        "Crash metrics are unavailable because a required source could not be retrieved."
+ *    - collisions available, crashes === 0 ->
+ *        "No reported crashes matched this boundary and period."
+ *    - collisions available, crashes > 0 ->
+ *        `${crashes} reported crashes matched this boundary and period.`
+ *    The summary NEVER contains the word "safe" — a zero or low count is a
+ *    neutral result, never a safety claim (docs/contract.md).
+ *
+ * 4. PRIORITY ZONE ECHO — priorityZone.status is copied through verbatim
+ *    into `priorityZone.status` on the report ("matched" | "not_matched" |
+ *    "unavailable").
+ *
+ * 5. LIMITATIONS (exact strings, matching the Phase 1 mocks verbatim so the
+ *    already-implemented frontend renders identical copy):
+ *    - collisions unavailable ->
+ *        "Motor Vehicle Collisions - Crashes is unavailable, so collision metrics could not be computed."
+ *    - priorityZone unavailable ->
+ *        "VZV Priority Zones or Areas is unavailable, so boundary overlap could not be checked."
+ *    - data quality: when collisions are available and some (but not all)
+ *      matched rows are missing `on_street_name`, add
+ *        `${missingCount} of ${totalCount} crash records are missing on_street_name.`
+ *      Coordinate-based counts are NOT suppressed by this — see rule 6.
+ *
+ * 6. NOTES — when the data-quality limitation above fires, `notes` includes
+ *    exactly:
+ *      "The matched crash records had coordinates, so missing street labels do not change the coordinate-based counts."
+ *    Otherwise `notes` is `[]`.
+ *
+ * 7. SOURCES — always exactly 3 entries, in this order, with the real
+ *    dataset IDs (never a placeholder):
+ *      [0] name "NYC Street Centerline", datasetId "inkn-q76z",
+ *          url "https://data.cityofnewyork.us/City-Government/Centerline/3mf9-qshr",
+ *          role "selection_geometry", retrievalStatus "available" (the
+ *          assembler only runs after a successful centerline resolution),
+ *          retrievedAt = the injected `generatedAt`,
+ *          queryDescription "Eligible street geometry is loaded by map viewport."
+ *      [1] name "Motor Vehicle Collisions - Crashes", datasetId "h9gi-nx95",
+ *          url "https://data.cityofnewyork.us/Public-Safety/Motor-Vehicle-Collisions-Crashes/h9gi-nx95",
+ *          role "collision_metrics", retrievalStatus = collisions.status,
+ *          retrievedAt = collisions.retrievedAt when available, else null,
+ *          queryDescription "Crash records are queried within 50 meters for calendar year 2025."
+ *      [2] name "VZV Priority Zones or Areas", datasetId "qzji-nvbd",
+ *          url "https://data.cityofnewyork.us/Transportation/VZV-Priority-Zones-or-Areas/qzji-nvbd",
+ *          role "priority_context", retrievalStatus "available" unless
+ *          priorityZone.status === "unavailable", retrievedAt = the injected
+ *          `generatedAt` when available else null,
+ *          queryDescription "Five multipolygons are fetched and checked for boundary overlap."
+ */
+
+const ASSEMBLY_GENERATED_AT = "2026-08-15T16:00:00.000Z";
+const ASSEMBLY_COLLISION_RETRIEVED_AT = "2026-08-15T15:59:00.000Z";
+const ASSEMBLY_REPORT_ID = "report-assembly-test-2025";
+
+const w40SelectionFixture: ResolvedIntersection = {
+  displayName: "W 40 ST at 5 AVE",
+  coordinate: { latitude: 40.752205375223, longitude: -73.981823738617 },
+  streetNames: ["W 40 ST", "5 AVE"],
+  physicalIds: ["183093"],
+};
+
+const e42SelectionFixture: ResolvedIntersection = {
+  displayName: "E 42 ST at PARK AVE",
+  coordinate: { latitude: 40.752175843845, longitude: -73.977792815236 },
+  streetNames: ["E 42 ST", "PARK AVE"],
+  physicalIds: ["73419", "148625"],
+};
+
+const CENTERLINE_SOURCE = {
+  name: "NYC Street Centerline",
+  datasetId: "inkn-q76z",
+  url: "https://data.cityofnewyork.us/City-Government/Centerline/3mf9-qshr",
+  role: "selection_geometry",
+  queryDescription: "Eligible street geometry is loaded by map viewport.",
+} as const;
+
+const COLLISION_SOURCE_BASE = {
+  name: "Motor Vehicle Collisions - Crashes",
+  datasetId: "h9gi-nx95",
+  url: "https://data.cityofnewyork.us/Public-Safety/Motor-Vehicle-Collisions-Crashes/h9gi-nx95",
+  role: "collision_metrics",
+  queryDescription:
+    "Crash records are queried within 50 meters for calendar year 2025.",
+} as const;
+
+const PRIORITY_ZONE_SOURCE_BASE = {
+  name: "VZV Priority Zones or Areas",
+  datasetId: "qzji-nvbd",
+  url: "https://data.cityofnewyork.us/Transportation/VZV-Priority-Zones-or-Areas/qzji-nvbd",
+  role: "priority_context",
+  queryDescription:
+    "Five multipolygons are fetched and checked for boundary overlap.",
+} as const;
+
+const COLLISION_UNAVAILABLE_LIMITATION =
+  "Motor Vehicle Collisions - Crashes is unavailable, so collision metrics could not be computed.";
+const PRIORITY_ZONE_UNAVAILABLE_LIMITATION =
+  "VZV Priority Zones or Areas is unavailable, so boundary overlap could not be checked.";
+const ON_STREET_NAME_NOTE =
+  "The matched crash records had coordinates, so missing street labels do not change the coordinate-based counts.";
+
+function availableCollisions(rows: CollisionRow[]): CollisionFetchResult {
+  return {
+    status: "available",
+    rows,
+    retrievedAt: ASSEMBLY_COLLISION_RETRIEVED_AT,
+  };
+}
+
+function unavailableCollisions(): CollisionFetchResult {
+  return {
+    status: "unavailable",
+    reason: "timeout",
+    retrievedAt: ASSEMBLY_COLLISION_RETRIEVED_AT,
+  };
+}
+
+describe("assembleIntersectionReport — PRD §12 fixtures assembled exactly", () => {
+  it("assembles the FULL W 40 ST at 5 AVE report object exactly, with an available Priority Zone", () => {
+    const result = assembleIntersectionReport({
+      selection: w40SelectionFixture,
+      collisions: availableCollisions(w40At5AveFixtureRows()),
+      priorityZone: { status: "not_matched" },
+      generatedAt: ASSEMBLY_GENERATED_AT,
+      reportId: ASSEMBLY_REPORT_ID,
+    });
+
+    const expected: IntersectionReport = {
+      schemaVersion: "1",
+      reportId: ASSEMBLY_REPORT_ID,
+      generatedAt: ASSEMBLY_GENERATED_AT,
+      status: "complete",
+      summary: "6 reported crashes matched this boundary and period.",
+      selection: {
+        kind: "intersection",
+        ...w40SelectionFixture,
+      },
+      boundary: { kind: "circle", radiusMeters: 50 },
+      period: { startInclusive: "2025-01-01", endExclusive: "2026-01-01" },
+      metrics: w40At5AveExpectedMetrics,
+      priorityZone: { status: "not_matched" },
+      limitations: [],
+      notes: [],
+      sources: [
+        {
+          ...CENTERLINE_SOURCE,
+          retrievalStatus: "available",
+          retrievedAt: ASSEMBLY_GENERATED_AT,
+        },
+        {
+          ...COLLISION_SOURCE_BASE,
+          retrievalStatus: "available",
+          retrievedAt: ASSEMBLY_COLLISION_RETRIEVED_AT,
+        },
+        {
+          ...PRIORITY_ZONE_SOURCE_BASE,
+          retrievalStatus: "available",
+          retrievedAt: ASSEMBLY_GENERATED_AT,
+        },
+      ],
+    };
+
+    expect(result).toEqual(expected);
+  });
+
+  it("assembles the FULL E 42 ST at PARK AVE report object exactly, including the missing-on_street_name limitation and note", () => {
+    const result = assembleIntersectionReport({
+      selection: e42SelectionFixture,
+      collisions: availableCollisions(e42AtParkAveFixtureRows()),
+      priorityZone: { status: "matched" },
+      generatedAt: ASSEMBLY_GENERATED_AT,
+      reportId: ASSEMBLY_REPORT_ID,
+    });
+
+    const expected: IntersectionReport = {
+      schemaVersion: "1",
+      reportId: ASSEMBLY_REPORT_ID,
+      generatedAt: ASSEMBLY_GENERATED_AT,
+      status: "complete",
+      summary: "9 reported crashes matched this boundary and period.",
+      selection: {
+        kind: "intersection",
+        ...e42SelectionFixture,
+      },
+      boundary: { kind: "circle", radiusMeters: 50 },
+      period: { startInclusive: "2025-01-01", endExclusive: "2026-01-01" },
+      metrics: e42AtParkAveExpectedMetrics,
+      priorityZone: { status: "matched" },
+      limitations: ["3 of 9 crash records are missing on_street_name."],
+      notes: [ON_STREET_NAME_NOTE],
+      sources: [
+        {
+          ...CENTERLINE_SOURCE,
+          retrievalStatus: "available",
+          retrievedAt: ASSEMBLY_GENERATED_AT,
+        },
+        {
+          ...COLLISION_SOURCE_BASE,
+          retrievalStatus: "available",
+          retrievedAt: ASSEMBLY_COLLISION_RETRIEVED_AT,
+        },
+        {
+          ...PRIORITY_ZONE_SOURCE_BASE,
+          retrievalStatus: "available",
+          retrievedAt: ASSEMBLY_GENERATED_AT,
+        },
+      ],
+    };
+
+    expect(result).toEqual(expected);
+  });
+});
+
+describe("assembleIntersectionReport — status determination", () => {
+  it("is 'complete' only when collisions are available AND priorityZone is not 'unavailable'", () => {
+    const matched = assembleIntersectionReport({
+      selection: w40SelectionFixture,
+      collisions: availableCollisions([]),
+      priorityZone: { status: "matched" },
+      generatedAt: ASSEMBLY_GENERATED_AT,
+      reportId: ASSEMBLY_REPORT_ID,
+    });
+    expect(matched.status).toBe("complete");
+
+    const notMatched = assembleIntersectionReport({
+      selection: w40SelectionFixture,
+      collisions: availableCollisions([]),
+      priorityZone: { status: "not_matched" },
+      generatedAt: ASSEMBLY_GENERATED_AT,
+      reportId: ASSEMBLY_REPORT_ID,
+    });
+    expect(notMatched.status).toBe("complete");
+  });
+
+  it("is 'partial' when the collision source is unavailable — all collision metrics are null (never 0), a limitation names the collision source, and its source entry is marked unavailable", () => {
+    const result = assembleIntersectionReport({
+      selection: w40SelectionFixture,
+      collisions: unavailableCollisions(),
+      priorityZone: { status: "matched" },
+      generatedAt: ASSEMBLY_GENERATED_AT,
+      reportId: ASSEMBLY_REPORT_ID,
+    });
+
+    expect(result.status).toBe("partial");
+    expect(result.metrics).toEqual({
+      crashes: null,
+      peopleInjured: null,
+      peopleKilled: null,
+      pedestriansInjured: null,
+      pedestriansKilled: null,
+      cyclistsInjured: null,
+      cyclistsKilled: null,
+      motoristsInjured: null,
+      motoristsKilled: null,
+      contributingFactors: null,
+      unspecifiedFactors: null,
+    });
+    for (const key of Object.values(result.metrics)) {
+      expect(key).not.toBe(0);
+    }
+    expect(result.limitations).toContain(COLLISION_UNAVAILABLE_LIMITATION);
+
+    const collisionSource = result.sources.find(
+      (source: ReportSource) => source.role === "collision_metrics",
+    );
+    expect(collisionSource?.retrievalStatus).toBe("unavailable");
+    expect(collisionSource?.retrievedAt).toBeNull();
+  });
+
+  it("is 'partial' when the Priority Zone source is unavailable — collision facts remain fully visible and a limitation names the Priority Zone source", () => {
+    const result = assembleIntersectionReport({
+      selection: w40SelectionFixture,
+      collisions: availableCollisions(w40At5AveFixtureRows()),
+      priorityZone: { status: "unavailable" },
+      generatedAt: ASSEMBLY_GENERATED_AT,
+      reportId: ASSEMBLY_REPORT_ID,
+    });
+
+    expect(result.status).toBe("partial");
+    expect(result.metrics).toEqual(w40At5AveExpectedMetrics);
+    expect(result.priorityZone).toEqual({ status: "unavailable" });
+    expect(result.limitations).toContain(PRIORITY_ZONE_UNAVAILABLE_LIMITATION);
+
+    const priorityZoneSource = result.sources.find(
+      (source: ReportSource) => source.role === "priority_context",
+    );
+    expect(priorityZoneSource?.retrievalStatus).toBe("unavailable");
+    expect(priorityZoneSource?.retrievedAt).toBeNull();
+  });
+
+  it("both collision AND Priority Zone degrading simultaneously still yields exactly ONE 'partial' status, with BOTH limitations present", () => {
+    const result = assembleIntersectionReport({
+      selection: w40SelectionFixture,
+      collisions: unavailableCollisions(),
+      priorityZone: { status: "unavailable" },
+      generatedAt: ASSEMBLY_GENERATED_AT,
+      reportId: ASSEMBLY_REPORT_ID,
+    });
+
+    expect(result.status).toBe("partial");
+    expect(typeof result.status).toBe("string");
+    expect(result.limitations).toEqual(
+      expect.arrayContaining([
+        COLLISION_UNAVAILABLE_LIMITATION,
+        PRIORITY_ZONE_UNAVAILABLE_LIMITATION,
+      ]),
+    );
+    expect(result.limitations).toHaveLength(2);
+  });
+});
+
+describe("assembleIntersectionReport — data-quality disclosure", () => {
+  it("discloses '3 of 9' missing on_street_name records for the E 42 ST at PARK AVE fixture without suppressing the counts", () => {
+    const result = assembleIntersectionReport({
+      selection: e42SelectionFixture,
+      collisions: availableCollisions(e42AtParkAveFixtureRows()),
+      priorityZone: { status: "matched" },
+      generatedAt: ASSEMBLY_GENERATED_AT,
+      reportId: ASSEMBLY_REPORT_ID,
+    });
+
+    expect(
+      result.limitations.some(
+        (limitation: string) =>
+          limitation.includes("3 of 9") &&
+          limitation.includes("on_street_name"),
+      ),
+    ).toBe(true);
+    expect(result.metrics.crashes).toBe(9);
+  });
+});
+
+describe("assembleIntersectionReport — source provenance", () => {
+  it("always includes exactly 3 sources with the real Socrata IDs, never a placeholder", () => {
+    const result = assembleIntersectionReport({
+      selection: w40SelectionFixture,
+      collisions: availableCollisions(w40At5AveFixtureRows()),
+      priorityZone: { status: "matched" },
+      generatedAt: ASSEMBLY_GENERATED_AT,
+      reportId: ASSEMBLY_REPORT_ID,
+    });
+
+    expect(result.sources).toHaveLength(3);
+
+    const byRole = Object.fromEntries(
+      result.sources.map((source: ReportSource) => [source.role, source]),
+    );
+
+    expect(byRole.selection_geometry?.datasetId).toBe("inkn-q76z");
+    expect(byRole.collision_metrics?.datasetId).toBe("h9gi-nx95");
+    expect(byRole.priority_context?.datasetId).toBe("qzji-nvbd");
+
+    const realIds = new Set(["inkn-q76z", "h9gi-nx95", "qzji-nvbd"]);
+    for (const source of result.sources) {
+      expect(realIds.has(source.datasetId)).toBe(true);
+      expect(source.name).toEqual(expect.any(String));
+      expect(source.name.length).toBeGreaterThan(0);
+      expect(source.url).toEqual(expect.any(String));
+      expect(source.url.length).toBeGreaterThan(0);
+      expect(source.queryDescription).toEqual(expect.any(String));
+      expect(source.queryDescription.length).toBeGreaterThan(0);
+      expect(["available", "unavailable"]).toContain(source.retrievalStatus);
+    }
+  });
+});
+
+describe("assembleIntersectionReport — zero-match is neutral, not a safety claim", () => {
+  it("stays 'complete' for a successful zero-row collision query, with all-zero metrics and a summary that never contains the word 'safe'", () => {
+    const result = assembleIntersectionReport({
+      selection: w40SelectionFixture,
+      collisions: availableCollisions([]),
+      priorityZone: { status: "not_matched" },
+      generatedAt: ASSEMBLY_GENERATED_AT,
+      reportId: ASSEMBLY_REPORT_ID,
+    });
+
+    expect(result.status).toBe("complete");
+    expect(result.metrics.crashes).toBe(0);
+    expect(result.metrics.peopleInjured).toBe(0);
+    expect(result.metrics.contributingFactors).toEqual([]);
+    expect(result.metrics.unspecifiedFactors).toBe(0);
+    expect(result.summary.toLowerCase()).not.toContain("safe");
+  });
+});
+
+describe("assembleIntersectionReport — purity", () => {
+  it("returns deeply equal output across repeated calls with the same input", () => {
+    const input = {
+      selection: e42SelectionFixture,
+      collisions: availableCollisions(e42AtParkAveFixtureRows()),
+      priorityZone: { status: "matched" as const },
+      generatedAt: ASSEMBLY_GENERATED_AT,
+      reportId: ASSEMBLY_REPORT_ID,
+    };
+
+    const first = assembleIntersectionReport(input);
+    const second = assembleIntersectionReport(input);
+
+    expect(first).toEqual(second);
   });
 });

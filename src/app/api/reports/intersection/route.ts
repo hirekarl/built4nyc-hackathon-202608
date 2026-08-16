@@ -1,13 +1,11 @@
-import {
-  SERVER_PERIOD_END,
-  SERVER_PERIOD_START,
-  SERVER_RADIUS_METERS,
-  validateReportRequest,
-} from "../../../../lib/validation";
+import { validateReportRequest } from "../../../../lib/validation";
 import {
   CenterlineSourceError,
   resolveIntersectionSelection,
 } from "../../../../lib/adapters/centerline";
+import { fetchCollisions } from "../../../../lib/adapters/collisions";
+import { resolvePriorityZone } from "../../../../lib/adapters/priority-zones";
+import { assembleIntersectionReport } from "../../../../lib/report";
 import type {
   IntersectionReportErrorResponse,
   IntersectionReportValidationErrorCode,
@@ -73,30 +71,18 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
-  // TODO(2.4-2.7): compute crash/injury/fatality metrics, contributing
-  // factor rollups, Priority Zone overlap, completeness status, summary,
-  // limitations, notes, and sources here. Until then this is a deterministic
-  // placeholder response containing only what's fully determined by
-  // validation + centerline resolution.
-  return Response.json(
-    {
-      schemaVersion: "1",
-      selection: {
-        kind: "intersection",
-        displayName: resolved.displayName,
-        coordinate: resolved.coordinate,
-        streetNames: resolved.streetNames,
-        physicalIds: resolved.physicalIds,
-      },
-      boundary: {
-        kind: "circle",
-        radiusMeters: SERVER_RADIUS_METERS,
-      },
-      period: {
-        startInclusive: SERVER_PERIOD_START,
-        endExclusive: SERVER_PERIOD_END,
-      },
-    },
-    { status: 200 },
-  );
+  const [collisions, priorityZone] = await Promise.all([
+    fetchCollisions(resolved.coordinate),
+    resolvePriorityZone(resolved.coordinate),
+  ]);
+
+  const report = assembleIntersectionReport({
+    selection: resolved,
+    collisions,
+    priorityZone,
+    generatedAt: new Date().toISOString(),
+    reportId: crypto.randomUUID(),
+  });
+
+  return Response.json(report, { status: 200 });
 }
