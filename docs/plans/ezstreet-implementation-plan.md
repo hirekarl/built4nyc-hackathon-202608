@@ -260,7 +260,7 @@ Built against source-backed mock report responses so frontend work was not block
 
 Gated on Phase 1 Step 1.9's `docs/contract.md` — not on the PRD §9 placeholder. Hold off on route implementation until that artifact exists.
 
-- [ ] **2.1 — Server-side centerline adapter + eligibility filter + intersection-candidate grouping**
+- [x] **2.1 — Server-side centerline adapter + eligibility filter + intersection-candidate grouping**
 
   ```text
   [SPEC]
@@ -276,7 +276,7 @@ Gated on Phase 1 Step 1.9's `docs/contract.md` — not on the PRD §9 placeholde
   1. Server re-validation of untrusted client selection (ADR-0003) > trusting Phase 1's client-side selection data directly.
   ```
 
-- [ ] **2.2 — Request validation module**
+- [x] **2.2 — Request validation module**
 
   ```text
   [SPEC]
@@ -292,7 +292,7 @@ Gated on Phase 1 Step 1.9's `docs/contract.md` — not on the PRD §9 placeholde
   1. Server-owned radius/period as non-negotiable constants (never client-trusted) > accepting client-supplied values that happen to match.
   ```
 
-- [ ] **2.3 — `POST /api/reports/intersection` route skeleton + 400 handling**
+- [x] **2.3 — `POST /api/reports/intersection` route skeleton + 400 handling**
 
   ```text
   [SPEC]
@@ -308,7 +308,7 @@ Gated on Phase 1 Step 1.9's `docs/contract.md` — not on the PRD §9 placeholde
   1. Fail closed (400, no report) on any invalid/untrusted input > permissive parsing for developer convenience.
   ```
 
-- [ ] **2.4 — Collision adapter + query builder**
+- [x] **2.4 — Collision adapter + query builder**
 
   ```text
   [SPEC]
@@ -324,7 +324,7 @@ Gated on Phase 1 Step 1.9's `docs/contract.md` — not on the PRD §9 placeholde
   1. Server-owned query parameters (radius, date bounds) baked into the adapter > flexible/parameterized query building.
   ```
 
-- [ ] **2.5 — Deterministic aggregation (totals, road-user breakdown, contributing-factor ranking)**
+- [x] **2.5 — Deterministic aggregation (totals, road-user breakdown, contributing-factor ranking)**
 
   ```text
   [SPEC]
@@ -340,7 +340,7 @@ Gated on Phase 1 Step 1.9's `docs/contract.md` — not on the PRD §9 placeholde
   1. Null-vs-zero correctness (non-negotiable) > compact/simplified aggregation code.
   ```
 
-- [ ] **2.6 — Priority Zone fetch/cache + geometry-intersection join**
+- [x] **2.6 — Priority Zone fetch/cache + geometry-intersection join**
 
   ```text
   [SPEC]
@@ -356,7 +356,7 @@ Gated on Phase 1 Step 1.9's `docs/contract.md` — not on the PRD §9 placeholde
   1. Real geometry-intersection correctness (matched on any overlap, never a fabricated zone name) > reusing SoQL spatial operators unsuited to polygon-vs-polygon.
   ```
 
-- [ ] **2.7 — Completeness/partial assembly + limitations + source provenance + route wiring**
+- [x] **2.7 — Completeness/partial assembly + limitations + source provenance + route wiring**
 
   ```text
   [SPEC]
