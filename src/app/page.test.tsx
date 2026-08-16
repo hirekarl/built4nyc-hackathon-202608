@@ -104,6 +104,20 @@ describe("Home", () => {
     ).toBeInTheDocument();
   });
 
+  it("exposes a full-viewport map workspace with a compact brand overlay", () => {
+    render(<Home />);
+
+    const heading = screen.getByRole("heading", { level: 1, name: "EZStreet" });
+    const workspace = heading.closest("main");
+    const brand = heading.closest("header");
+    const map = screen.getByLabelText("Mock intersection map");
+
+    expect(workspace).toHaveClass("map-workspace");
+    expect(brand).toHaveClass("map-brand-overlay");
+    expect(map.closest(".map-canvas-shell")).toBeInTheDocument();
+    expect(workspace).not.toHaveClass("app-shell");
+  });
+
   it("moves from initial to ready when the map selects an official intersection", () => {
     render(<Home />);
 

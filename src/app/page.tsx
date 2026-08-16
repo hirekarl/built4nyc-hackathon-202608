@@ -100,8 +100,12 @@ export default function Home() {
   }, [cancelPendingReport]);
 
   return (
-    <main className="app-shell">
-      <header className="site-header">
+    <main className="map-workspace">
+      <div className="map-canvas-shell">
+        <Map onSelect={handleSelect} />
+      </div>
+
+      <header className="map-brand-overlay">
         <div>
           <p className="eyebrow">Street facts, clearly sourced</p>
           <h1>EZStreet</h1>
@@ -112,19 +116,14 @@ export default function Home() {
         </p>
       </header>
 
-      <div className="workspace">
-        <div className="map-column">
-          <Map onSelect={handleSelect} />
-        </div>
-        <ReportPanel
-          state={panelState}
-          selection={selection}
-          report={report}
-          onGenerate={handleGenerate}
-          onRetry={handleGenerate}
-          onClearSelection={handleClearSelection}
-        />
-      </div>
+      <ReportPanel
+        state={panelState}
+        selection={selection}
+        report={report}
+        onGenerate={handleGenerate}
+        onRetry={handleGenerate}
+        onClearSelection={handleClearSelection}
+      />
     </main>
   );
 }
