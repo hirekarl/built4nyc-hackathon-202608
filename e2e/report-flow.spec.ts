@@ -144,14 +144,26 @@ async function openProxyListWithCandidates(
   const mapRetryButton = mapControls.getByRole("button", { name: "Retry" });
 
   for (let attempt = 1; attempt <= attempts; attempt++) {
-    const outcome = await Promise.race([
-      firstCandidate
-        .waitFor({ state: "attached", timeout: NETWORK_TIMEOUT })
-        .then(() => "ready" as const),
-      mapRetryButton
-        .waitFor({ state: "visible", timeout: NETWORK_TIMEOUT })
-        .then(() => "retry" as const),
-    ]).catch(() => "timeout" as const);
+    const readyPromise = firstCandidate
+      .waitFor({ state: "attached", timeout: NETWORK_TIMEOUT })
+      .then(() => "ready" as const);
+    const retryPromise = mapRetryButton
+      .waitFor({ state: "visible", timeout: NETWORK_TIMEOUT })
+      .then(() => "retry" as const);
+
+    // The loser of the race keeps waiting out its full timeout and then
+    // rejects — after this attempt has moved on, and possibly after the
+    // test itself has ended ("Target page, context or browser has been
+    // closed"). Give each branch its own terminal handler so a late
+    // rejection cannot surface as a spurious failure somewhere unrelated.
+    // The race still sees the original promises, so its semantics are
+    // unchanged.
+    readyPromise.catch(() => {});
+    retryPromise.catch(() => {});
+
+    const outcome = await Promise.race([readyPromise, retryPromise]).catch(
+      () => "timeout" as const,
+    );
 
     if (outcome === "ready") return;
     if (attempt === attempts) {
@@ -235,6 +247,13 @@ async function completeReport(
           response.request().method() === "POST",
         { timeout: NETWORK_TIMEOUT },
       );
+      // If the click below throws — e.g. the panel landed in
+      // validation-error so no Generate button exists — control jumps to
+      // the catch and this promise is never awaited, leaving it to reject
+      // unhandled a full NETWORK_TIMEOUT later. Attaching a terminal
+      // handler here is harmless to the `await` below, which still sees
+      // the original promise.
+      responsePromise.catch(() => {});
       await trigger.click({ timeout: 10_000 });
 
       if (assertLoadingCue) {
@@ -369,10 +388,15 @@ async function assertReportMatchesFixture(
 // describe block in its OWN worker concurrently, which overloads the local
 // dev server enough to flake the live-fixture correctness gate below (its
 // own internal `serial` mode only protects tests *within* that describe,
-// not across describes in the same file). Configuring the file's implicit
-// root describe as serial forces every test in this file — old and new —
-// onto a single worker, one request at a time.
-test.describe.configure({ mode: "serial" });
+// not across describes in the same file).
+//
+// A file-level `serial` would fix that, but `serial` also SKIPS every later
+// test once one fails — which would silently delete the Step 3.6
+// accessibility scans in exactly the case they matter most (live data
+// drifted, or something upstream broke). An a11y gate that disappears when
+// things go wrong is worse than a slightly noisier one, so each describe
+// declares its own `serial` instead and the three groups fail
+// independently.
 
 test.describe("Live end-to-end report flow (real NYC Open Data, no stubs)", () => {
   // Be a polite, low-concurrency client against Socrata: run the two
