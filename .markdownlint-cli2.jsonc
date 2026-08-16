@@ -19,5 +19,5 @@
     }
   },
   "globs": ["**/*.md"],
-  "ignores": ["node_modules", "docs/private"]
+  "ignores": ["node_modules", "docs/private", "test-results"]
 }
