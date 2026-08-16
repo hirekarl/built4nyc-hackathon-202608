@@ -1,8 +1,13 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Map from "../components/Map";
 import ReportPanel, { type ReportPanelState } from "../components/ReportPanel";
+import {
+  SERVER_PERIOD_END,
+  SERVER_PERIOD_START,
+  SERVER_RADIUS_METERS,
+} from "../lib/validation";
 import type {
   IntersectionReport,
   IntersectionReportBoundary,
@@ -11,19 +16,47 @@ import type {
   IntersectionSelection,
 } from "../types/report";
 
+// Built from the server-owned constants (not re-declared literals) so the
+// client can never drift from what `validateReportRequest` actually accepts
+// — see src/lib/validation.ts for why these are the sole source of truth.
 const REPORT_BOUNDARY: IntersectionReportBoundary = {
   kind: "circle",
-  radiusMeters: 50,
+  radiusMeters: SERVER_RADIUS_METERS,
 };
 
 const REPORT_PERIOD: IntersectionReportPeriod = {
-  startInclusive: "2025-01-01",
-  endExclusive: "2026-01-01",
+  startInclusive: SERVER_PERIOD_START,
+  endExclusive: SERVER_PERIOD_END,
 };
+
+// Generous relative to observed live Socrata round trips (~1-3s) — bounds a
+// hung request without making a healthy-but-slow request look broken.
+const REPORT_FETCH_TIMEOUT_MS = 30_000;
 
 function stateForReport(report: IntersectionReport): ReportPanelState {
   if (report.metrics.crashes === 0) return "zero-match";
   return report.status;
+}
+
+/**
+ * Combines a per-request abort controller (aborted by `cancelPendingReport`
+ * when a newer selection/unmount supersedes this request) with a bounded
+ * timeout, so a hung route surfaces the honest `source-failure` state
+ * instead of leaving the panel on "Retrieving NYC Open Data…" forever.
+ */
+function createReportRequestSignal(controller: AbortController): AbortSignal {
+  const timeoutSignal = AbortSignal.timeout(REPORT_FETCH_TIMEOUT_MS);
+  if (typeof AbortSignal.any === "function") {
+    return AbortSignal.any([controller.signal, timeoutSignal]);
+  }
+  // Fallback for runtimes without AbortSignal.any: forward whichever of the
+  // two fires first onto the request controller itself.
+  timeoutSignal.addEventListener(
+    "abort",
+    () => controller.abort(timeoutSignal.reason),
+    { once: true },
+  );
+  return controller.signal;
 }
 
 export default function Home() {
@@ -33,10 +66,18 @@ export default function Home() {
   const [report, setReport] = useState<IntersectionReport | null>(null);
   const [panelState, setPanelState] = useState<ReportPanelState>("initial");
   const requestIdRef = useRef(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const cancelPendingReport = useCallback(() => {
     requestIdRef.current += 1;
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
   }, []);
+
+  // Unmount guard: composes with the AbortController below — an in-flight
+  // fetch must not resolve into setReport/setPanelState after the tree is
+  // gone, and it must not keep a live Socrata call running past unmount.
+  useEffect(() => cancelPendingReport, [cancelPendingReport]);
 
   const handleSelect = useCallback(
     (nextSelection: IntersectionSelection) => {
@@ -57,6 +98,9 @@ export default function Home() {
 
     cancelPendingReport();
     const requestId = requestIdRef.current;
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    const signal = createReportRequestSignal(controller);
     const requestBody: IntersectionReportRequest = {
       schemaVersion: "1",
       selection,
@@ -71,6 +115,7 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
+        signal,
       });
 
       if (requestId !== requestIdRef.current) return;
@@ -88,9 +133,19 @@ export default function Home() {
       setReport(nextReport);
       setPanelState(stateForReport(nextReport));
     } catch {
+      // Fires for both a genuine network/timeout failure and an abort
+      // triggered by `cancelPendingReport` (supersede/unmount). The
+      // requestId guard below is what tells them apart: a supersede has
+      // already bumped requestIdRef.current, so only a real timeout or
+      // network error — where requestId is still current — reaches the
+      // source-failure state below it.
       if (requestId !== requestIdRef.current) return;
       setReport(null);
       setPanelState("source-failure");
+    } finally {
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
     }
   }, [cancelPendingReport, selection]);
 
