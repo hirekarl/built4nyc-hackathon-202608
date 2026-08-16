@@ -278,6 +278,13 @@ describe("canonical contract document", () => {
     );
     expectLineWith(contractDocument, "longitude", "latitude", "coordinate");
     expectLineWith(contractDocument, "untrusted", "revalidated");
+    expectLineWith(
+      contractDocument,
+      "stname_label",
+      "full_street_name",
+      "Grand Central",
+      "limitation",
+    );
 
     for (const literal of [
       '"1"',
@@ -381,6 +388,7 @@ describe("contract source-of-truth cleanup", () => {
     for (const step of [
       "1.1",
       "1.2",
+      "1.3",
       "1.4",
       "1.5",
       "1.6",
@@ -393,11 +401,8 @@ describe("contract source-of-truth cleanup", () => {
         `Expected Phase 1 step ${step} to be checked`,
       ).toContain(`- [x] **${step}`);
     }
-    expect(planDocument).toContain(
-      "- [ ] **1.3 — SPIKE: Grand Central multi-roadbed node naming fallback**",
-    );
     expect(planDocument).not.toContain(
-      "- [x] **1.3 — SPIKE: Grand Central multi-roadbed node naming fallback**",
+      "- [ ] **1.3 — SPIKE: Grand Central multi-roadbed node naming fallback**",
     );
     expect(planDocument).not.toMatch(/Gated on Phase 0/i);
     expect(planDocument).not.toContain("PRD §6.6 hierarchy");

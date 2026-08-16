@@ -227,6 +227,22 @@ function addEndpoint(
   groups.set(key, group);
 }
 
+/**
+ * Step 1.3 decision — multi-roadbed node naming fallback.
+ *
+ * Candidates are grouped on the exact endpoint key `longitude|latitude|level`:
+ * no coordinate snapping tolerance, and the from/to level code is part of the
+ * key so different roadbeds and grades never collapse into one intersection.
+ * Names come from `stname_label`, falling back to `full_street_name`. A group
+ * is only exposed once it holds at least two distinct eligible street names.
+ *
+ * This resolves ordinary intersections correctly — the verified control fixture
+ * (physical ID 183093, W 40 ST between 5 AVE and AVE OF THE AMERICAS) groups as
+ * expected. It deliberately does not solve Grand Central, whose Park Avenue
+ * roadbeds and PARK AVE VIADUCT stay separate candidates rather than one named
+ * node. That remains a documented limitation, not a solved case; an official
+ * LION/Geosupport node fallback would be the real fix. See docs/contract.md.
+ */
 export function groupIntersectionCandidates(
   centerlines: readonly NormalizedCenterline[],
 ): IntersectionCandidate[] {

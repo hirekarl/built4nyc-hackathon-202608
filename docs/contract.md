@@ -17,6 +17,7 @@ This document is the canonical frontend/backend contract for EZStreet. The machi
 - A coordinate names `longitude` and `latitude` explicitly; GeoJSON uses longitude/latitude order while the request object keeps named fields so order cannot be inferred incorrectly.
 - Every request field is untrusted input and is revalidated against official eligible NYC Street Centerline data before report generation.
 - The request cannot contain raw query text. In particular, the browser cannot supply SoQL, alternate dates, alternate radii, or replacement official names.
+- Intersection candidates group centerline endpoints on the exact `longitude|latitude|level` key with no snapping tolerance, name them from `stname_label` falling back to `full_street_name`, and require at least two distinct eligible street names; multi-roadbed nodes such as Grand Central stay separate candidates and remain a documented limitation rather than one named intersection.
 
 ## Request body
 
