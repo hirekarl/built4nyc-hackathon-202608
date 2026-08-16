@@ -118,7 +118,7 @@ HTTP status is not duplicated in the body; the transport status and `error.code`
 | Error code | HTTP | `retryable` | Panel state | Meaning |
 | --- | --: | --- | --- | --- |
 | `invalid_request` | 400 | `false` | `validation-error` | Body is absent, malformed, or does not match the required object shape. |
-| `invalid_coordinate` | 400 | `false` | `validation-error` | Coordinate is non-finite, out of range, or otherwise invalid. |
+| `invalid_coordinate` | 400 | `false` | `validation-error` | Coordinate is non-finite, out of global range, or outside a generous New York City bounding box (latitude 40.4 to 41.0, longitude -74.3 to -73.65). The city box also catches a longitude/latitude pair supplied in the wrong order. |
 | `unsupported_radius` | 400 | `false` | `validation-error` | Boundary is not the fixed 50-meter circle. |
 | `unsupported_period` | 400 | `false` | `validation-error` | Period is not calendar year 2025 with the locked inclusive/exclusive dates. |
 | `unsupported_selection_kind` | 400 | `false` | `validation-error` | Selection kind is not `intersection`. |
