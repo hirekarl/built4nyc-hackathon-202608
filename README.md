@@ -80,33 +80,54 @@ The app runs with **no API key**. A `SOCRATA_APP_TOKEN` is supported and only ra
 ## Architecture
 
 ```mermaid
+---
+title: EZStreet request path
+config:
+  flowchart:
+    curve: linear
+---
 flowchart TB
-    subgraph browser["🖥️ Browser"]
-        direction LR
-        map["Map.tsx + centerline-client.ts<br/>MapLibre GL, viewport query, grouping"]
-        page["page.tsx<br/>selection &amp; panel state"]
-        panel["ReportPanel.tsx<br/>8 explicit states"]
-        print["PrintReport.tsx<br/>print / save as PDF"]
+    accTitle: EZStreet architecture, browser through Next.js server to NYC Open Data
+    accDescr {
+      Three tiers, top to bottom, in the order a request travels.
+      In the browser, Map.tsx queries the street centerline by viewport and
+      groups intersections; page.tsx holds selection and panel state;
+      ReportPanel.tsx renders eight explicit states; PrintReport.tsx handles
+      print and save as PDF.
+      page.tsx posts a locked selection to the Next.js server and receives
+      either a 200 complete or partial report, or a 503 source_failure.
+      On the server, validation.ts rejects raw queries, checks the NYC
+      bounding box, and locks radius and period; adapters/centerline.ts
+      re-resolves the selection; adapters/collisions.ts and
+      adapters/priority-zones.ts fetch in parallel; report.ts assembles the
+      report deterministically.
+      All three adapters read Socrata datasets: inkn-q76z for street
+      centerline, h9gi-nx95 for collisions, qzji-nvbd for priority zones.
+    }
+
+    subgraph browser["Browser"]
+        map["Map.tsx + centerline-client.ts<br/>MapLibre GL, viewport query, grouping"]:::tierBrowser
+        page["page.tsx<br/>selection &amp; panel state"]:::tierBrowser
+        panel["ReportPanel.tsx<br/>8 explicit states"]:::tierBrowser
+        print["PrintReport.tsx<br/>print / save as PDF"]:::tierBrowser
         map --> page --> panel --> print
     end
 
-    subgraph server["▲ Next.js server — POST /api/reports/intersection"]
-        direction LR
-        valid["validation.ts<br/>reject raw queries, NYC bbox,<br/>lock radius + period"]
-        cl["adapters/centerline.ts<br/>re-resolve selection"]
-        col["adapters/collisions.ts"]
-        pz["adapters/priority-zones.ts"]
-        report["report.ts<br/>deterministic assembly"]
+    subgraph server["Next.js server — POST /api/reports/intersection"]
+        valid["validation.ts<br/>reject raw queries, NYC bbox,<br/>lock radius + period"]:::tierServer
+        cl["adapters/centerline.ts<br/>re-resolve selection"]:::tierServer
+        col["adapters/collisions.ts"]:::tierServer
+        pz["adapters/priority-zones.ts"]:::tierServer
+        report["report.ts<br/>deterministic assembly"]:::tierServer
         valid --> cl
         cl --> col --> report
         cl --> pz --> report
     end
 
-    subgraph data["🗽 NYC Open Data — Socrata"]
-        direction LR
-        d1[("inkn-q76z<br/>Street Centerline")]
-        d2[("h9gi-nx95<br/>Collisions")]
-        d3[("qzji-nvbd<br/>Priority Zones")]
+    subgraph data["NYC Open Data — Socrata"]
+        d1[("inkn-q76z<br/>Street Centerline")]:::tierData
+        d2[("h9gi-nx95<br/>Collisions")]:::tierData
+        d3[("qzji-nvbd<br/>Priority Zones")]:::tierData
     end
 
     page <-- "POST locked selection<br/>200 complete / partial · 503 source_failure" --> valid
@@ -114,6 +135,10 @@ flowchart TB
     cl --> d1
     col --> d2
     pz --> d3
+
+    classDef tierBrowser stroke:#2563eb,stroke-width:2px
+    classDef tierServer stroke:#7c3aed,stroke-width:2px
+    classDef tierData stroke:#0f766e,stroke-width:2px
 ```
 
 Two things the diagram cannot show, and both are load-bearing:
@@ -130,7 +155,7 @@ Four people, one weekend, using AI coding tools throughout — Claude Code and C
 
 **Human in the loop, with receipts:**
 
-- `main` is branch-protected and requires a **human approving review**. No agent merged its own work — every one of the 28 pull requests was reviewed by a person.
+- `main` is branch-protected and requires a **human approving review**. No agent merged its own work — every merged pull request was reviewed by a person.
 - Decisions that are expensive to reverse were made by humans first, in [ADRs](./docs/adr/README.md), before code existed.
 - `.husky/commit-msg` **rejects AI `Co-Authored-By` trailers**. Authorship stays with the people accountable for the code.
 - CI is the authority, not the model: lint, typecheck, ≥90% coverage, an accessibility scan, and a production build all gate merge.
@@ -215,7 +240,7 @@ None of us had built this before, and several things turned out to be harder tha
 
 | [<img src="https://github.com/hirekarl.png?size=100" width="100" alt=""><br>**Karl Johnson**](https://github.com/hirekarl) | [<img src="https://github.com/antunishdPursuit.png?size=100" width="100" alt=""><br>**Dennys Antunish**](https://github.com/antunishdPursuit) | [<img src="https://github.com/rhaeyyan.png?size=100" width="100" alt=""><br>**Rayan Khan**](https://github.com/rhaeyyan) | [<img src="https://github.com/1abbasia.png?size=100" width="100" alt=""><br>**Ahsan Abbasi**](https://github.com/1abbasia) |
 | :-: | :-: | :-: | :-: |
-| Project lead, architecture, docs, CI/CD | Frontend, map UI, frontend/backend contract | Backend report API, Phase 3 integration | Backend, NYC Open Data adapters |
+| Project lead, architecture, backend adapters, docs, CI/CD | Frontend, map UI, frontend/backend contract | Phase 3 integration, code review | Backend, NYC Open Data adapters (paired) |
 
 ## License
 
