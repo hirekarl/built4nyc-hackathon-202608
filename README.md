@@ -109,8 +109,7 @@ flowchart TB
         d3[("qzji-nvbd<br/>Priority Zones")]
     end
 
-    page -- "POST locked selection" --> valid
-    report -- "200 complete / partial · 503 source_failure" --> panel
+    page <-- "POST locked selection<br/>200 complete / partial · 503 source_failure" --> valid
     map -. "within_box viewport query" .-> d1
     cl --> d1
     col --> d2
