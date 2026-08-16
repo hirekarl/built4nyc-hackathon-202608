@@ -160,6 +160,35 @@ The original PRD section 9 described intent without exact paths. This frozen con
 
 No request or success field is optional. The TypeScript definitions supersede any earlier candidate wording in PRD §9.
 
+## Live-route conformance verification (Phase 3 Step 3.2)
+
+Both PRD §12 acceptance fixtures were driven through the real `POST /api/reports/intersection` route against live NYC Open Data on 2026-08-15. **No shape drift exists**: every field path, enum value, and nullability in the live 200 body matches this document and `src/types/report.ts` exactly. Neither side required a fix.
+
+**Every deterministic metric is identical between the Phase 1 mock and the live route**, for both fixtures — the diff-of-zero check this step exists to prove:
+
+| Fixture | Crashes | Injured | Killed | Pedestrians | Cyclists | Motorists |
+| --- | --: | --: | --: | --- | --- | --- |
+| W 40 ST at 5 AVE | 6 | 7 | 1 | 4 inj / 1 killed | 1 inj / 0 killed | 2 inj / 0 killed |
+| E 42 ST at PARK AVE | 9 | 4 | 0 | 2 inj / 0 killed | 2 inj / 0 killed | 0 inj / 0 killed |
+
+Fixture 2 also emits its documented labeling gap: `3 of 9 crash records are missing on_street_name.`
+
+### Expected mock-versus-live differences
+
+The mock fixtures in `src/lib/mocks/report.mock.ts` differ from the live response in the fields below. **These are the server correctly re-deriving the official record, not drift to reconcile** — the request table above already states that a submitted name, coordinate, street-name array, or physical-ID array never overrides the normalized official record. A test asserting a mock value in any of these fields is asserting a mock artifact, not a contract rule.
+
+| Field | Mock | Live | Why |
+| --- | --- | --- | --- |
+| Fixture 1 `selection.displayName` | `W 40 ST at 5 AVE` | `E 40 ST at 5 AVE at W 40 ST` | 5 AVE splits E/W 40 ST; all three segments share the node, and the grouping rule names every eligible street at that exact coordinate. |
+| Fixture 1 `selection.physicalIds` | `["183093"]` | `["23415","1940","183093","1941"]` | Every contributing centerline segment at the node is returned, not just the one the client happened to submit. |
+| Fixture 2 `selection.displayName` | `E 42 ST at PARK AVE` | `PARK AVE at E 42 ST` | Street order follows the server's normalization, not the client's submitted order. |
+| Fixture 2 `selection.physicalIds` | `["73419","148625"]` | `["148625","73419","73416"]` | Same re-derivation as fixture 1. |
+| Fixture 2 `priorityZone.status` / `status` | `unavailable` / `partial` | `matched` / `complete` | The mock deliberately encodes a degraded-source case so the panel's `partial` state stays testable. Live, that intersection genuinely overlaps a Priority Zone and all three sources resolve. |
+
+Because the UI renders `report.selection.displayName` from the response, the locked name shown in the report can legitimately differ from the label hovered on the map. That is the official record asserting itself over client-submitted text, which is the ADR-0003 security boundary working as designed.
+
+Note that fixture 2 carries a non-empty `limitations[]` while still reporting `status: complete`. Completeness describes source availability, not data quality: a disclosed labeling gap in otherwise-retrieved data is a limitation, not a degraded source.
+
 ## Deterministic and AI boundary
 
 All factual metrics, completeness status, Priority Zone status, limitations, and source provenance are deterministic. AI never computes, changes, hides, or authorizes report facts. This contract defines no AI request or response fields.

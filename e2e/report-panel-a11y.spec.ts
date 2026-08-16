@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { w40At5AveReportMock } from "../src/lib/mocks/report.mock";
 
 const reportDrawerToggleName = /^(?:Collapse|Expand) safety report$/;
 
@@ -49,6 +50,15 @@ const officialCenterlineRows = [
 test.beforeEach(async ({ page }) => {
   await page.route("**/resource/inkn-q76z.json**", async (route) => {
     await route.fulfill({ json: officialCenterlineRows });
+  });
+
+  // This is a Phase 1 accessibility/layout spec, not a data-correctness
+  // spec: it must stay deterministic and offline regardless of what NYC
+  // Open Data returns live. Stub the server route itself (not just the
+  // client-side map fetch above) so the whole page stays hermetic.
+  // Live-data conformance is covered separately by Phase 3 Step 3.3/3.5.
+  await page.route("**/api/reports/intersection", async (route) => {
+    await route.fulfill({ json: w40At5AveReportMock });
   });
 });
 

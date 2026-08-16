@@ -528,3 +528,272 @@ describe("full report assembly — HTTP 200 success body (Step 2.7)", () => {
     expect(json.selection.displayName).not.toBe("SUBMITTED DISPLAY NAME");
   });
 });
+
+/**
+ * Phase 3 Step 3.2 — reconcile contract drift.
+ *
+ * Two additions per the live-data verification against real NYC Open Data
+ * (both PRD §12 fixtures, no shape drift found):
+ *
+ *   1. Close the one branch the Phase 2 author flagged as uncovered: line
+ *      62's `throw error` rethrow of a non-`CenterlineSourceError` escaping
+ *      `resolveIntersectionSelection`. Only a *known* adapter failure
+ *      (`CenterlineSourceError`) becomes the contract's 503 `source_failure`
+ *      body; anything else must propagate rather than being silently folded
+ *      into that same envelope.
+ *   2. A contract-conformance guard driven from a realistic mocked adapter
+ *      response shaped like the real live 200 body (multi-street normalized
+ *      `displayName`, expanded `physicalIds`, `priorityZone.status:
+ *      "matched"`), so a future backend edit can't silently drop/rename a
+ *      field `ReportPanel`/`PrintReport` read without a test failing here.
+ */
+
+describe("non-CenterlineSourceError escaping the centerline adapter (Step 3.2)", () => {
+  it("rethrows a plain Error rather than converting it to a 503 source_failure body", async () => {
+    const unexpectedError = new Error("unexpected adapter crash");
+    mockResolveIntersectionSelection.mockRejectedValue(unexpectedError);
+    const { POST } = await importRoute();
+
+    await expect(POST(postRequest(validBody()))).rejects.toBe(unexpectedError);
+  });
+});
+
+describe("contract-conformance guard — HTTP 200 body matches docs/contract.md exactly (Step 3.2)", () => {
+  // Shaped like the real live response documented for PRD §12 fixture 2
+  // (E 42 ST at PARK AVE): a multi-street normalized displayName, an
+  // EXPANDED physicalIds array (not an echo of the client's submitted one),
+  // and priorityZone.status "matched" with NO zone name/id/borough field —
+  // the Priority Zone dataset has no such column, so the contract forbids
+  // one leaking through.
+  const LIVE_SHAPED_RESOLVED = {
+    displayName: "PARK AVE at E 42 ST",
+    coordinate: { latitude: 40.7527, longitude: -73.9772 },
+    streetNames: ["PARK AVE", "E 42 ST"],
+    physicalIds: ["148625", "73419", "73416"],
+  };
+
+  function e42AtParkAveFixtureRows(): CollisionRow[] {
+    // PRD §12 fixture 2: 9 crashes, 4 injured, 0 killed, 2 pedestrians
+    // injured, 2 cyclists injured, 0 motorists injured/killed, with 3 of 9
+    // records missing on_street_name (the documented data-quality
+    // limitation).
+    return [
+      collisionRow({
+        collision_id: "5800001",
+        number_of_persons_injured: "1",
+        number_of_pedestrians_injured: "1",
+      }),
+      collisionRow({
+        collision_id: "5800002",
+        number_of_persons_injured: "1",
+        number_of_pedestrians_injured: "1",
+      }),
+      collisionRow({
+        collision_id: "5800003",
+        number_of_persons_injured: "1",
+        number_of_cyclist_injured: "1",
+      }),
+      collisionRow({
+        collision_id: "5800004",
+        number_of_persons_injured: "1",
+        number_of_cyclist_injured: "1",
+      }),
+      collisionRow({ collision_id: "5800005" }),
+      collisionRow({
+        collision_id: "5800006",
+        on_street_name: null,
+      }),
+      collisionRow({
+        collision_id: "5800007",
+        on_street_name: null,
+      }),
+      collisionRow({
+        collision_id: "5800008",
+        on_street_name: null,
+      }),
+      collisionRow({ collision_id: "5800009" }),
+    ];
+  }
+
+  it("returns exactly the contract's required field paths, with correct types/enums, no leaked Priority Zone identity fields, and the documented normalization", async () => {
+    mockResolveIntersectionSelection.mockResolvedValue(LIVE_SHAPED_RESOLVED);
+    mockFetchCollisions.mockResolvedValue({
+      status: "available",
+      rows: e42AtParkAveFixtureRows(),
+      retrievedAt: DEFAULT_RETRIEVED_AT,
+    });
+    mockResolvePriorityZone.mockResolvedValue({ status: "matched" });
+
+    const { POST } = await importRoute();
+    const response = await POST(
+      postRequest(
+        validBody({
+          selection: {
+            kind: "intersection",
+            displayName: "SUBMITTED DISPLAY NAME",
+            coordinate: { latitude: 40.7527, longitude: -73.9772 },
+            streetNames: ["SUBMITTED ST", "SUBMITTED AVE"],
+            physicalIds: ["999999"],
+          },
+        }),
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    const json = (await response.json()) as Record<string, unknown>;
+
+    // --- exact top-level key set (no extra, no missing) ---
+    expect(Object.keys(json).sort()).toEqual(
+      [
+        "schemaVersion",
+        "reportId",
+        "generatedAt",
+        "status",
+        "summary",
+        "selection",
+        "boundary",
+        "period",
+        "metrics",
+        "priorityZone",
+        "limitations",
+        "notes",
+        "sources",
+      ].sort(),
+    );
+
+    // --- schemaVersion / status / core scalar types ---
+    expect(json.schemaVersion).toBe("1");
+    expect(typeof json.reportId).toBe("string");
+    expect((json.reportId as string).length).toBeGreaterThan(0);
+    expect(typeof json.generatedAt).toBe("string");
+    expect(Number.isNaN(Date.parse(json.generatedAt as string))).toBe(false);
+    expect(["complete", "partial"]).toContain(json.status);
+    expect(typeof json.summary).toBe("string");
+
+    // --- selection: exact keys, OFFICIAL normalized values (never the
+    // client-submitted ones), including the documented multi-street
+    // displayName and expanded physicalIds normalization ---
+    const selection = json.selection as Record<string, unknown>;
+    expect(Object.keys(selection).sort()).toEqual(
+      [
+        "kind",
+        "displayName",
+        "coordinate",
+        "streetNames",
+        "physicalIds",
+      ].sort(),
+    );
+    expect(selection.kind).toBe("intersection");
+    expect(selection.displayName).toBe(LIVE_SHAPED_RESOLVED.displayName);
+    expect(selection.displayName).not.toBe("SUBMITTED DISPLAY NAME");
+    expect(selection.coordinate).toEqual(LIVE_SHAPED_RESOLVED.coordinate);
+    expect(selection.streetNames).toEqual(LIVE_SHAPED_RESOLVED.streetNames);
+    expect(selection.physicalIds).toEqual(LIVE_SHAPED_RESOLVED.physicalIds);
+    expect((selection.physicalIds as string[]).length).toBeGreaterThan(1);
+
+    // --- boundary / period: server-owned, never client-supplied ---
+    expect(json.boundary).toEqual({ kind: "circle", radiusMeters: 50 });
+    expect(json.period).toEqual({
+      startInclusive: "2025-01-01",
+      endExclusive: "2026-01-01",
+    });
+
+    // --- metrics: exact keys, correct types, the fixture's exact numbers ---
+    const metrics = json.metrics as Record<string, unknown>;
+    expect(Object.keys(metrics).sort()).toEqual(
+      [
+        "crashes",
+        "peopleInjured",
+        "peopleKilled",
+        "pedestriansInjured",
+        "pedestriansKilled",
+        "cyclistsInjured",
+        "cyclistsKilled",
+        "motoristsInjured",
+        "motoristsKilled",
+        "contributingFactors",
+        "unspecifiedFactors",
+      ].sort(),
+    );
+    expect(metrics).toEqual({
+      crashes: 9,
+      peopleInjured: 4,
+      peopleKilled: 0,
+      pedestriansInjured: 2,
+      pedestriansKilled: 0,
+      cyclistsInjured: 2,
+      cyclistsKilled: 0,
+      motoristsInjured: 0,
+      motoristsKilled: 0,
+      contributingFactors: [],
+      unspecifiedFactors: 0,
+    });
+    expect(Array.isArray(metrics.contributingFactors)).toBe(true);
+
+    // --- priorityZone: exactly {status}, one of the three literals, and NO
+    // leaked zone identity field (name/id/borough are forbidden — the
+    // Priority Zone dataset has no such column) ---
+    const priorityZone = json.priorityZone as Record<string, unknown>;
+    expect(Object.keys(priorityZone)).toEqual(["status"]);
+    expect(["matched", "not_matched", "unavailable"]).toContain(
+      priorityZone.status,
+    );
+    expect(priorityZone.status).toBe("matched");
+    for (const forbiddenKey of [
+      "name",
+      "zoneName",
+      "id",
+      "zoneId",
+      "borough",
+    ]) {
+      expect(priorityZone).not.toHaveProperty(forbiddenKey);
+    }
+
+    // --- limitations / notes: string arrays, disclosing the documented
+    // missing on_street_name limitation for this fixture ---
+    expect(Array.isArray(json.limitations)).toBe(true);
+    for (const limitation of json.limitations as unknown[]) {
+      expect(typeof limitation).toBe("string");
+    }
+    expect(json.limitations).toEqual([
+      "3 of 9 crash records are missing on_street_name.",
+    ]);
+    expect(Array.isArray(json.notes)).toBe(true);
+    for (const note of json.notes as unknown[]) {
+      expect(typeof note).toBe("string");
+    }
+
+    // --- sources: exact required datasets, roles, and shape ---
+    const sources = json.sources as Array<Record<string, unknown>>;
+    expect(Array.isArray(sources)).toBe(true);
+    expect(sources).toHaveLength(3);
+    for (const source of sources) {
+      expect(Object.keys(source).sort()).toEqual(
+        [
+          "name",
+          "datasetId",
+          "url",
+          "role",
+          "retrievalStatus",
+          "retrievedAt",
+          "queryDescription",
+        ].sort(),
+      );
+      expect(["inkn-q76z", "h9gi-nx95", "qzji-nvbd"]).toContain(
+        source.datasetId,
+      );
+      expect([
+        "selection_geometry",
+        "collision_metrics",
+        "priority_context",
+      ]).toContain(source.role);
+      expect(["available", "unavailable"]).toContain(source.retrievalStatus);
+      expect(typeof source.name).toBe("string");
+      expect(typeof source.url).toBe("string");
+      expect(typeof source.queryDescription).toBe("string");
+    }
+    expect(sources.map((source) => source.datasetId).sort()).toEqual(
+      ["inkn-q76z", "h9gi-nx95", "qzji-nvbd"].sort(),
+    );
+  });
+});
