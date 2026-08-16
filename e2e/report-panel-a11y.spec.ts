@@ -58,6 +58,14 @@ test.beforeEach(async ({ page }) => {
   // client-side map fetch above) so the whole page stays hermetic.
   // Live-data conformance is covered separately by Phase 3 Step 3.3/3.5.
   await page.route("**/api/reports/intersection", async (route) => {
+    // A real fetch takes long enough to guarantee a window where the panel
+    // reads "Retrieving NYC Open Data…" before this test asserts on it. An
+    // instant Playwright route fulfillment does not carry that guarantee —
+    // without a floor here, the panel can already read "Partial report."
+    // by the time the assertion starts polling, on a fast machine. That
+    // would be a nondeterministic failure in a spec whose whole point is
+    // to be deterministic.
+    await new Promise((resolve) => setTimeout(resolve, 300));
     await route.fulfill({ json: w40At5AveReportMock });
   });
 });
