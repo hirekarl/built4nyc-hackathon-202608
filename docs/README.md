@@ -12,6 +12,8 @@ Source material extracted from `Built for NYC AI Hackathon 20260815-16.pdf` (the
 Project docs (not sourced from the event packet):
 
 - [PRD](./prd.md) — product requirements and concrete frontend interface specification for EZStreet
+- [API Contract](./contract.md) — canonical frontend/backend contract for `POST /api/reports/intersection`, frozen against `src/types/report.ts`
+- [Infrastructure](./infra.md) — Vercel project linkage and environment-variable setup
 - [Knowledge Base](./knowledge-base/README.md) — dataset/framework/regulation research findings
 - [ADRs](./adr/README.md) — architecture decision records
 - [Implementation Plan](./plans/ezstreet-implementation-plan.md) — phased, TDD-ready build plan (frontend → backend → integration) with pre-written `[SPEC]`/`[FORCES]` blocks per step

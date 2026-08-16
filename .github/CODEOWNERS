@@ -1,0 +1,15 @@
+# Default owner for anything not matched below.
+* @hirekarl
+
+# Frontend: map, report drawer, print document.
+/src/components/ @antunishdPursuit
+/src/app/page.tsx @antunishdPursuit
+
+# Backend: API route, validation, deterministic report, NYC Open Data adapters.
+/src/app/api/ @rhaeyyan @1abbasia
+/src/lib/ @rhaeyyan @1abbasia
+
+# Contracts, decisions, and build process.
+/docs/adr/ @hirekarl
+/docs/contract.md @hirekarl @antunishdPursuit
+/.github/ @hirekarl
